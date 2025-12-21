@@ -1,0 +1,65 @@
+"use client";
+
+import Map from "@/components/Map";
+
+export default function Home() {
+  return (
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#0b0b0b",
+        color: "#ffffff",
+        overflow: "hidden",
+      }}
+    >
+      {/* Top bar */}
+      <div
+        style={{
+          height: "56px",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 16px",
+          borderBottom: "1px solid #222",
+          fontWeight: 700,
+          flexShrink: 0,
+        }}
+      >
+        Skill Traders
+      </div>
+
+      {/* Main body */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        {/* MAP (full width behind right panel layout) */}
+        <div style={{ flex: 1, minWidth: 0, height: "100%" }}>
+          <Map />
+        </div>
+
+        {/* RIGHT PANEL (messages/details later) */}
+        <div
+          style={{
+            width: "320px",
+            borderLeft: "1px solid #222",
+            padding: "16px",
+            overflowY: "auto",
+            flexShrink: 0,
+            background: "#0b0b0b",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>Messages</div>
+          <div style={{ opacity: 0.7, fontSize: 13 }}>
+            When you click “Message” on a pin, this panel will show the conversation.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
