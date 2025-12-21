@@ -23,30 +23,45 @@ export default function Page() {
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div
-            style={{
-              fontSize: 24,
-              fontWeight: 950,
-              letterSpacing: 0.4,
-              color: "#22c55e",
-            }}
-          >
-            Skill Traders
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+  <img
+    src="/logo.png"
+    alt="Skill Traders"
+    style={{ height: 34, width: "auto", display: "block" }}
+  />
 
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              opacity: 0.65,
-            }}
-          >
-            Beta
-          </div>
-        </div>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "baseline",
+      gap: 10,
+    }}
+  >
+    <div
+      style={{
+        fontSize: 24,
+        fontWeight: 950,
+        letterSpacing: 0.4,
+        color: "#22c55e",
+      }}
+    >
+      Skill Traders
+    </div>
+
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: 0.6,
+        textTransform: "uppercase",
+        opacity: 0.65,
+      }}
+    >
+      Beta
+    </div>
+  </div>
+</div>
+
 
         <div style={{ fontSize: 12, opacity: 0.55, fontWeight: 800 }}>
           Trade skills locally
