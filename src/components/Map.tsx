@@ -272,6 +272,15 @@ const [threadLoading, setThreadLoading] = useState(false);
   creatingRef.current = creating;
 }, [creating]);
 
+useEffect(() => {
+  if (mapRef.current) {
+    setTimeout(() => {
+      mapRef.current?.resize();
+    }, 50);
+  }
+}, [isMobile]);
+
+
 
   // 1) Init map once
   useEffect(() => {
@@ -837,7 +846,7 @@ setTimeout(() => setStatus(""), 1200);
   style={{
     flex: isMobile ? "0 0 auto" : 1,
     position: "relative",
-    height: isMobile ? "55vh" : "100%",
+    height: isMobile ? "45vh" : "100%",
   }}
 >
 
@@ -889,7 +898,7 @@ setTimeout(() => setStatus(""), 1200);
           gap: 12,
           overflow: "auto",
           fontSize: 15,
-          height: isMobile ? "45vh" : "100%",
+          height: isMobile ? "55vh" : "100%",
 borderTop: isMobile ? `1px solid ${UI.panelBorder}` : undefined,
 
 fontWeight: 500,
