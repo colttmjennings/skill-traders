@@ -16,10 +16,8 @@ export const metadata: Metadata = {
   title: "Skill Traders — Trade skills locally. No money.",
   description:
     "Trade skills locally. No money — just value. Offer what you know, request what you need.",
-  icons: {
-  icon: "/icon.png",
-},
 };
+
 
 
 
