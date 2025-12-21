@@ -725,12 +725,10 @@ setSelectedTradeId(added.id);
     const deletedCount = (data ?? []).length;
 
     if (deletedCount === 0) {
-      alert(
-        "Delete did NOT remove anything in Supabase.\n\nThis usually means:\n- Row Level Security (RLS) is blocking deletes, OR\n- the id column type/match is off.\n\nOpen DevTools Console (F12) and tell me what you see."
-      );
-      console.warn("Delete returned 0 rows. tradeId =", tradeId);
-      return;
-    }
+  alert("You can only delete your own post.");
+  return;
+}
+
 
     // update UI
     setTrades((prev) => prev.filter((t) => t.id !== tradeId));
