@@ -51,15 +51,16 @@ export default function MapPage({
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
   <img
-    src="/logo.png"
-    alt="Skill Traders"
-    style={{
-      height: 40,
-      width: 40,
-      display: "block",
-      objectFit: "contain",
-    }}
-  />
+  src="/logo.png"
+  alt="Skill Traders"
+  style={{
+    height: 32,
+    width: 32,
+    display: "block",
+    objectFit: "contain",
+    transform: "translateY(1px)",
+  }}
+/>
 
   <div
     style={{

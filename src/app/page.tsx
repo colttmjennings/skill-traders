@@ -14,57 +14,61 @@ export default function Page() {
       }}
     >
             {/* Top bar */}
-      <div
-        style={{
-          padding: "16px 18px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img
-            src="/logo.png"
-            alt="Skill Traders"
-            style={{
-              height: 34,
-              width: 34,
-              display: "block",
-              objectFit: "contain",
-            }}
-          />
+<div
+  style={{
+    padding: "16px 26px",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  }}
+>
+  {/* Left side: logo + title */}
+  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <img
+      src="/logo.png"
+      alt="Skill Traders"
+      style={{
+        height: 38,
+        width: 38,
+        display: "block",
+        objectFit: "contain",
+        transform: "translateY(1px)", // tiny visual nudge, optional
+      }}
+    />
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <div
-              style={{
-                fontSize: 24,
-                fontWeight: 950,
-                letterSpacing: 0.4,
-                color: "#22c55e",
-              }}
-            >
-              Skill Traders
-            </div>
+    <div
+      style={{
+        fontSize: 24,
+        fontWeight: 950,
+        letterSpacing: 0.4,
+        color: "#22c55e",
+        lineHeight: 1,
+      }}
+    >
+      Skill Traders
+    </div>
 
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                opacity: 0.65,
-              }}
-            >
-              Beta
-            </div>
-          </div>
-        </div>
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: 0.6,
+        textTransform: "uppercase",
+        opacity: 0.65,
+        marginLeft: 2,
+      }}
+    >
+      Beta
+    </div>
+  </div>
 
-        <div style={{ fontSize: 12, opacity: 0.55, fontWeight: 800 }}>
-          Trade skills locally
-        </div>
-      </div>
+  {/* Right side */}
+  <div style={{ fontSize: 12, opacity: 0.55, fontWeight: 800 }}>
+    Trade skills locally
+  </div>
+</div>
+
 
       {/* Center content */}
       <div
