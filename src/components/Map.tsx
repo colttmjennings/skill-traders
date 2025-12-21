@@ -851,37 +851,6 @@ setTimeout(() => setStatus(""), 1200);
 >
 
         <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} />
-
-        {/* top-left mini status */}
-        <div
-          style={{
-            position: "absolute",
-            top: 12,
-            left: 12,
-            background: "rgba(0,0,0,0.6)",
-            color: "white",
-            padding: "10px 12px",
-            borderRadius: 12,
-            fontFamily: "system-ui",
-            fontSize: 12,
-            maxWidth: 360,
-            backdropFilter: "blur(6px)",
-          }}
-        >
-          <div
-  style={{
-    fontSize: 15,
-    fontWeight: 700,
-    marginBottom: 6,
-    letterSpacing: 0.3,
-    color: "#22c55e",
-  }}
->
-  Skill Traders
-</div>
-
-          
-        </div>
       </div>
 
       {/* RIGHT PANEL */}

@@ -50,7 +50,17 @@ export default function MapPage({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontWeight: 900 }}>Skill Traders</div>
+          <img
+  src="/logo.png"
+  alt="Skill Traders"
+  style={{
+    height: 28,
+    width: 28,
+    display: "block",
+    objectFit: "contain",
+  }}
+/>
+
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
