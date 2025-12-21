@@ -49,19 +49,31 @@ export default function MapPage({
           color: "white",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img
-  src="/logo.png"
-  alt="Skill Traders"
-  style={{
-    height: 28,
-    width: 28,
-    display: "block",
-    objectFit: "contain",
-  }}
-/>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+  <img
+    src="/logo.png"
+    alt="Skill Traders"
+    style={{
+      height: 40,
+      width: 40,
+      display: "block",
+      objectFit: "contain",
+    }}
+  />
 
-        </div>
+  <div
+    style={{
+      fontSize: 22,
+      fontWeight: 900,
+      letterSpacing: 0.4,
+      color: "#22c55e",
+      lineHeight: 1,
+    }}
+  >
+    Skill Traders
+  </div>
+</div>
+
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {sessionEmail ? (
