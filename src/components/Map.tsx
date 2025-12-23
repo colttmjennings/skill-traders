@@ -1246,8 +1246,9 @@ lineHeight: 1.45,
           }}
         >
           <option value="all">All</option>
-          <option value="offer">Offer</option>
-          <option value="request">Request</option>
+<option value="offer">I am offering</option>
+<option value="request">I am requesting</option>
+
         </select>
 
         <label style={{ fontSize: 13, opacity: 0.85 }}>Category</label>
@@ -1338,13 +1339,14 @@ lineHeight: 1.45,
             />
 
             <select
-              value={newType}
-              onChange={(e) => setNewType(e.target.value as any)}
-              style={S.input}
-            >
-              <option value="offer">Offer</option>
-              <option value="request">Request</option>
-            </select>
+  value={newType}
+  onChange={(e) => setNewType(e.target.value as any)}
+  style={S.input}
+>
+  <option value="offer">I am offering</option>
+  <option value="request">I am requesting</option>
+</select>
+
 
             <select
   value={newCategory}
