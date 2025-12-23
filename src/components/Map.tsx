@@ -1718,64 +1718,82 @@ opacity: sessionEmail ? 1 : 0.6,
                   {m.body}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 2 }}>
-  <button
-    onClick={async () => {
-      await loadThread(m.trade_id);
-
-      const me = (await supabase.auth.getUser()).data.user?.id;
-      if (me) {
-        await supabase
-          .from("messages")
-          .update({ read_at: new Date().toISOString() })
-          .eq("trade_id", m.trade_id)
-          .eq("to_user_id", me)
-          .is("read_at", null);
-      }
-
-      await loadInbox();
-      setActiveThreadTradeId(m.trade_id);
-      setInboxOpen(true);
-    }}
-    style={{
-      padding: "6px 10px",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.15)",
-      background: "rgba(255,255,255,0.08)",
-      color: "white",
-      fontWeight: 900,
-      cursor: "pointer",
-      fontSize: 12,
-      height: 32,
-      whiteSpace: "nowrap",
-    }}
-    title="Reply"
-  >
-    Reply
-  </button>
-
-  <button
-    onClick={() => deleteMessage(m.id)}
-    style={{
-      padding: "6px 10px",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.15)",
-      background: "#7f1d1d",
-      color: "white",
-      fontWeight: 900,
-      cursor: "pointer",
-      fontSize: 12,
-      height: 32,
-      whiteSpace: "nowrap",
-    }}
-    title="Delete message"
-  >
-    Delete
-  </button>
+  
 </div>
 
 
               </div>
             ))}
+
+            <div
+  style={{
+    marginTop: 14,
+    borderTop: "1px solid rgba(255,255,255,0.10)",
+    paddingTop: 12,
+  }}
+>
+  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>
+    Reply
+  </div>
+
+  <textarea
+    value={replyBody}
+    onChange={(e) => setReplyBody(e.target.value)}
+    placeholder="Write a reply…"
+    disabled={replySending}
+    rows={4}
+    style={{
+      width: "100%",
+      padding: 11,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.06)",
+      color: "rgba(255,255,255,0.92)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      fontSize: 14,
+      fontWeight: 600,
+      outline: "none",
+      resize: "vertical",
+    }}
+  />
+
+  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+    <button
+      onClick={() => setInboxOpen(false)}
+      disabled={replySending}
+      style={{
+        flex: 1,
+        padding: 12,
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.08)",
+        color: "rgba(255,255,255,0.92)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        fontWeight: 900,
+        cursor: replySending ? "not-allowed" : "pointer",
+      }}
+    >
+      Close
+    </button>
+
+    <button
+      onClick={sendThreadReply}
+      disabled={replySending || !replyBody.trim()}
+      style={{
+        flex: 1,
+        padding: 12,
+        borderRadius: 12,
+        background: "#1bbf8a",
+        color: "#06101a",
+        border: "1px solid rgba(255,255,255,0.10)",
+        fontWeight: 900,
+        cursor: replySending || !replyBody.trim() ? "not-allowed" : "pointer",
+        opacity: replySending || !replyBody.trim() ? 0.65 : 1,
+      }}
+    >
+      {replySending ? "Sending..." : "Send Reply"}
+    </button>
+  </div>
+</div>
+
           </div>
         )}
       </div>
