@@ -1130,120 +1130,127 @@ lineHeight: 1.45,
         <div style={{ opacity: 0.8, fontSize: 13 }}>No messages yet.</div>
       ) : (
   <div>
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {inbox.slice(0, inboxLimit).map((m) => (
-  <div
-    key={m.id}
-    style={{
-      width: "100%",
-      padding: 10,
-      borderRadius: 12,
-      border: "1px solid rgba(255,255,255,0.10)",
-      background: "#0f172a",
-      color: "rgba(255,255,255,0.92)",
-      display: "flex",
-      gap: 10,
-      alignItems: "flex-start",
-    }}
-  >
-    <button
-      onClick={async () => {
-  await loadThread(m.trade_id);
+    <div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    overflowX: "hidden",
+  }}
+>
 
-  // mark as read (only messages sent TO me in this trade)
-  const me = (await supabase.auth.getUser()).data.user?.id;
-  if (me) {
-    await supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
-      .eq("trade_id", m.trade_id)
-      .eq("to_user_id", me)
-      .is("read_at", null);
-  }
-
-  await loadInbox(); // refresh inbox so colors update
-  setActiveThreadTradeId(m.trade_id);
-  setInboxOpen(true);
-}}
-
-      style={{
-        flex: 1,
-        textAlign: "left",
-        background: "transparent",
-        border: "none",
-        padding: 0,
-        color: "inherit",
-        cursor: "pointer",
-      }}
-    >
-      {(() => {
+      {inbox.slice(0, inboxLimit).map((m) => {
   const otherEmail = (m as any).__otherEmail ?? m.from_email ?? "user";
   const hasUnread = !!(m as any).__hasUnread;
 
   return (
     <div
+      key={m.id}
       style={{
-        fontWeight: 800,
-        fontSize: 13,
-        opacity: 0.95,
-        color: hasUnread ? "#1bbf8a" : "rgba(255,255,255,0.92)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 10,
+        padding: 12,
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.03)",
+        marginTop: 10,
         minWidth: 0,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
       }}
-      title={`${hasUnread ? "NEW message from " : "Message from "}${otherEmail}`}
     >
-      {hasUnread ? "NEW message from " : "Message from "}
-      {otherEmail}
-    </div>
-  );
-})()}
+      <button
+        onClick={async () => {
+          await loadThread(m.trade_id);
 
+          // mark as read (only messages sent TO me in this trade)
+          const me = sessionUserId;
+          if (me) {
+            await supabase
+              .from("messages")
+              .update({ read_at: new Date().toISOString() })
+              .eq("trade_id", m.trade_id)
+              .eq("to_user_id", me)
+              .is("read_at", null);
+          }
 
-
-      <div
+          await loadInbox(); // refresh inbox so colors update
+          setActiveThreadTradeId(m.trade_id);
+          setInboxOpen(true);
+        }}
         style={{
-          fontSize: 13,
-          opacity: 0.85,
-          marginTop: 4,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          flex: 1,
+          minWidth: 0,
+          textAlign: "left",
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          color: "inherit",
+          cursor: "pointer",
         }}
       >
-        {m.body}
-      </div>
+        <div
+          style={{
+            fontWeight: 800,
+            fontSize: 13,
+            opacity: 0.95,
+            color: hasUnread ? "#1bbf8a" : "rgba(255,255,255,0.92)",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={`${hasUnread ? "NEW message from " : "Message from "}${otherEmail}`}
+        >
+          {hasUnread ? "NEW message from " : "Message from "}
+          {otherEmail}
+        </div>
 
-      <div style={{ fontSize: 11, opacity: 0.65, marginTop: 6 }}>
-        {new Date(m.created_at).toLocaleString()}
-      </div>
-    </button>
+        <div
+          style={{
+            fontSize: 13,
+            opacity: 0.85,
+            marginTop: 4,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {m.body}
+        </div>
 
-    <button
-      onClick={(e) => {
-  e.stopPropagation();
-  deleteMessage(m.id);
-}}
-      style={{
-        padding: "6px 10px",
-        borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.15)",
-        background: "#7f1d1d",
-        color: "white",
-        fontWeight: 900,
-        cursor: "pointer",
-        fontSize: 12,
-        height: 32,
-        marginTop: 2,
-        whiteSpace: "nowrap",
-      }}
-      title="Delete message"
-    >
-      Delete
-    </button>
-  </div>
-))}
+        <div style={{ fontSize: 11, opacity: 0.65, marginTop: 6 }}>
+          {new Date(m.created_at).toLocaleString()}
+        </div>
+      </button>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteMessage(m.id);
+        }}
+        style={{
+          flexShrink: 0,
+          padding: "6px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "#7f1d1d",
+          color: "white",
+          fontWeight: 900,
+          cursor: "pointer",
+          fontSize: 12,
+          height: 32,
+          marginTop: 2,
+          whiteSpace: "nowrap",
+        }}
+        title="Delete message"
+      >
+        Delete
+      </button>
+    </div>
+  );
+})}
+
 <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>
     Reply
