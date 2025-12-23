@@ -203,6 +203,7 @@ const [authOpen, setAuthOpen] = useState(false);
 const [authEmail, setAuthEmail] = useState("");
 const [authSending, setAuthSending] = useState(false);
 const [authSent, setAuthSent] = useState(false);
+const [showTutorial, setShowTutorial] = useState(false);
 
 useEffect(() => {
   const sp = new URLSearchParams(window.location.search);
@@ -214,6 +215,15 @@ useEffect(() => {
   if (loginParam === "1") {
     setAuthOpen(true);
     setAuthSent(false);
+  }
+}, []);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const seen = localStorage.getItem("skilltraders_seen_tutorial");
+  if (!seen) {
+    setShowTutorial(true);
   }
 }, []);
 
@@ -434,23 +444,21 @@ useEffect(() => {
         filter: `to_user_id=eq.${sessionUserId}`,
       },
       async (payload) => {
-  console.log("✅ REALTIME INSERT RECEIVED:", payload);
+        console.log("✅ REALTIME INSERT RECEIVED:", payload);
 
-  // refresh inbox list
-  await loadInbox();
+        // refresh inbox list
+        await loadInbox();
 
-  // if thread is open for this trade, refresh it too
-  const tradeId = (payload.new as any)?.trade_id as string | undefined;
-  if (inboxOpen && tradeId && activeThreadTradeId === tradeId) {
-    await loadThread(tradeId);
-  }
-}
-
+        // if thread is open for this trade, refresh it too
+        const tradeId = (payload.new as any)?.trade_id as string | undefined;
+        if (inboxOpen && tradeId && activeThreadTradeId === tradeId) {
+          await loadThread(tradeId);
+        }
+      }
     )
     .subscribe((status) => {
-  console.log("📡 Realtime status:", status);
-});
-
+      console.log("📡 Realtime status:", status);
+    });
 
   return () => {
     supabase.removeChannel(channel);
@@ -458,48 +466,8 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [sessionUserId, inboxOpen, activeThreadTradeId]);
 
-  // 2) Load trades
-  async function loadTrades() {
-    setLoading(true);
-    setStatus("");
-    try {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("id, created_at, type, category, title, lng, lat, user_id")
-        .order("created_at", { ascending: false });
 
-      if (error) {
-        setStatus(`Supabase error: ${error.message}`);
-        setTrades([]);
-        return;
-      }
-
-      const clean: Trade[] = (data ?? [])
-  .map((row: any) => ({
-    id: String(row.id),
-    created_at: row.created_at,
-    type: row.type ?? "offer",
-    category: row.category ?? "General",
-    title: row.title ?? "Untitled",
-    lng: Number(row.lng),
-    lat: Number(row.lat),
-    user_id: row.user_id ?? null, // ✅ THIS IS THE FIX
-  }))
-  .filter((t) => isValidCoord(t.lng, t.lat));
-
-
-
-      setTrades(clean);
-      setStatus(`Supabase connected. Rows found: ${clean.length}`);
-    } catch (e: any) {
-      setStatus(`Failed to fetch / network error: ${e?.message ?? "unknown"}`);
-      setTrades([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // 2.5) Load inbox (messages TO me)
+  // 2.5) Load inbox (one row per thread)
 async function loadInbox() {
   if (!sessionEmail) {
     setInbox([]);
@@ -511,18 +479,18 @@ async function loadInbox() {
 
   try {
     const me = sessionUserId;
-if (!me) {
-  setInbox([]);
-  return;
-}
+    if (!me) {
+      setInbox([]);
+      return;
+    }
 
-
+    // Get messages that involve me (sent OR received)
     const { data, error } = await supabase
       .from("messages")
       .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
-      .eq("to_user_id", me)
+      .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(200);
 
     if (error) {
       setInboxError(error.message);
@@ -530,7 +498,43 @@ if (!me) {
       return;
     }
 
-    setInbox((data ?? []) as any[]);
+    const rows = (data ?? []) as any[];
+
+    // Group by trade_id and keep only 1 item (latest) per trade_id
+    const byTrade = new globalThis.Map<string, any[]>();
+    for (const r of rows) {
+      if (!r.trade_id) continue;
+      const arr = byTrade.get(r.trade_id) ?? [];
+      arr.push(r);
+      byTrade.set(r.trade_id, arr);
+    }
+
+    const grouped = Array.from(byTrade.entries()).map(([trade_id, msgs]: [string, any[]]) => {
+      // newest first for this thread
+      msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      const latest = msgs[0];
+
+      // NEW if any message TO me is unread
+      const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
+
+      // "Other person" email for display:
+      // Prefer the most recent inbound message (from != me)
+      const latestInbound = msgs.find((m) => m.from_user_id !== me && m.from_email);
+      const otherEmail = latestInbound?.from_email ?? latest.from_email ?? "Conversation";
+
+      return {
+        ...latest,
+        trade_id,
+        __hasUnread: hasUnread,
+        __otherEmail: otherEmail,
+      };
+    });
+
+    // Order inbox threads by latest message time (newest first)
+    grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    setInbox(grouped as any[]);
   } catch (e: any) {
     setInboxError(e?.message ?? "unknown error");
     setInbox([]);
@@ -538,6 +542,9 @@ if (!me) {
     setInboxLoading(false);
   }
 }
+
+
+  
 
 // 2.6) Load one thread (conversation) for a trade
 async function loadThread(tradeId: string) {
@@ -567,6 +574,45 @@ async function loadThread(tradeId: string) {
   }
 }
 
+// Load trades for map
+async function loadTrades() {
+  setLoading(true);
+  setStatus("");
+
+  try {
+    const { data, error } = await supabase
+      .from("trades")
+      .select("id, created_at, type, category, title, lng, lat, user_id")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (error) {
+      setStatus(error.message);
+      setTrades([]);
+      return;
+    }
+
+    const clean: Trade[] = (data ?? [])
+      .map((row: any) => ({
+        id: String(row.id),
+        created_at: row.created_at,
+        type: row.type ?? "offer",
+        category: row.category ?? "General",
+        title: row.title ?? "Untitled",
+        lng: Number(row.lng),
+        lat: Number(row.lat),
+        user_id: row.user_id ?? null,
+      }))
+      .filter((t) => isValidCoord(t.lng, t.lat));
+
+    setTrades(clean);
+  } catch (e: any) {
+    setStatus(e?.message ?? "unknown error");
+    setTrades([]);
+  } finally {
+    setLoading(false);
+  }
+}
 
   useEffect(() => {
     loadTrades();
@@ -916,6 +962,56 @@ setTimeout(() => setStatus(""), 1200);
     height: isMobile ? "45vh" : "100%",
   }}
 >
+{showTutorial && (
+  <div
+    style={{
+      position: "absolute",
+      top: 12,
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 20,
+      background: "#0f1c2e",
+      border: "1px solid rgba(255,255,255,0.15)",
+      borderRadius: 14,
+      padding: "12px 14px",
+      color: "rgba(255,255,255,0.95)",
+      maxWidth: 420,
+      width: "calc(100% - 24px)",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+    }}
+  >
+    <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 6 }}>
+      New here?
+    </div>
+
+    <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.4 }}>
+      Click <b>Create Post</b>, then click on the map to place your pin.
+      <br />
+      Choose whether you are <b>offering</b> or <b>requesting</b> a skill.
+    </div>
+
+    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+      <button
+        onClick={() => {
+          localStorage.setItem("skilltraders_seen_tutorial", "1");
+          setShowTutorial(false);
+        }}
+        style={{
+          padding: "6px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.08)",
+          color: "white",
+          fontWeight: 900,
+          cursor: "pointer",
+          fontSize: 12,
+        }}
+      >
+        Got it
+      </button>
+    </div>
+  </div>
+)}
 
         <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} />
 
