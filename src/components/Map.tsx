@@ -139,18 +139,7 @@ export default function Map({
   login?: string | null;
 }) {
 
-useEffect(() => {
-  const sp = new URLSearchParams(window.location.search);
 
-  const modeParam = sp.get("mode");
-  if (modeParam === "post") setCreating(true);
-
-  const loginParam = sp.get("login");
-  if (loginParam === "1") {
-    setAuthOpen(true);
-    setAuthSent(false);
-  }
-}, []);
 
 useEffect(() => {
   // If we came from a Supabase magic link, tokens may be in the URL hash.
@@ -192,6 +181,7 @@ useEffect(() => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const creatingRef = useRef(false);
+ 
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,6 +203,20 @@ const [authOpen, setAuthOpen] = useState(false);
 const [authEmail, setAuthEmail] = useState("");
 const [authSending, setAuthSending] = useState(false);
 const [authSent, setAuthSent] = useState(false);
+
+useEffect(() => {
+  const sp = new URLSearchParams(window.location.search);
+
+  const modeParam = sp.get("mode");
+  if (modeParam === "post") setCreating(true);
+
+  const loginParam = sp.get("login");
+  if (loginParam === "1") {
+    setAuthOpen(true);
+    setAuthSent(false);
+  }
+}, []);
+
 
 const [msgEmail, setMsgEmail] = useState("");
 const [msgBody, setMsgBody] = useState("");
@@ -240,6 +244,69 @@ const [inboxLimit, setInboxLimit] = useState(3);
 const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(null);
 const [threadMsgs, setThreadMsgs] = useState<MsgRow[]>([]);
 const [threadLoading, setThreadLoading] = useState(false);
+
+// --- THREAD REPLY (MVP) ---
+const [replyBody, setReplyBody] = useState("");
+const [replySending, setReplySending] = useState(false);
+
+function getThreadOtherUserId(me: string, msgs: MsgRow[]) {
+  // Find the most recent message that involves another user id
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    const other =
+      m.from_user_id === me ? m.to_user_id :
+      m.to_user_id === me ? m.from_user_id :
+      null;
+
+    if (other) return other;
+  }
+  return null;
+}
+
+async function sendThreadReply() {
+  if (!sessionEmail) {
+    setAuthOpen(true);
+    setAuthSent(false);
+    return;
+  }
+  if (!activeThreadTradeId) return;
+
+  const me = sessionUserId;
+  if (!me) return;
+
+  const body = replyBody.trim();
+  if (!body) return;
+
+  const otherUserId = getThreadOtherUserId(me, threadMsgs);
+  if (!otherUserId) {
+    alert("Couldn't find who to reply to (missing user id on the other side).");
+    return;
+  }
+
+  setReplySending(true);
+  try {
+    const { error } = await supabase.from("messages").insert([
+      {
+        trade_id: activeThreadTradeId,
+        from_user_id: me,
+        to_user_id: otherUserId,
+        from_email: sessionEmail,
+        body,
+      },
+    ]);
+
+    if (error) {
+      alert(`Reply failed: ${error.message}`);
+      return;
+    }
+
+    setReplyBody("");
+    await loadThread(activeThreadTradeId);
+    await loadInbox();
+  } finally {
+    setReplySending(false);
+  }
+}
 
 
   // create form
@@ -851,6 +918,27 @@ setTimeout(() => setStatus(""), 1200);
 >
 
         <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} />
+
+        {/* top-left mini status */}
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            background: "rgba(0,0,0,0.6)",
+            color: "white",
+            padding: "10px 12px",
+            borderRadius: 12,
+            fontFamily: "system-ui",
+            fontSize: 12,
+            maxWidth: 360,
+            backdropFilter: "blur(6px)",
+          }}
+        >
+
+
+          
+        </div>
       </div>
 
       {/* RIGHT PANEL */}
@@ -1033,6 +1121,68 @@ lineHeight: 1.45,
     </button>
   </div>
 ))}
+<div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>
+    Reply
+  </div>
+
+  <textarea
+    value={replyBody}
+    onChange={(e) => setReplyBody(e.target.value)}
+    placeholder="Write a reply…"
+    disabled={replySending}
+    rows={4}
+    style={{
+      width: "100%",
+      padding: 11,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.06)",
+      color: "rgba(255,255,255,0.92)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      fontSize: 14,
+      fontWeight: 600,
+      outline: "none",
+      resize: "vertical",
+    }}
+  />
+
+  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+    <button
+      onClick={() => setInboxOpen(false)}
+      disabled={replySending}
+      style={{
+        flex: 1,
+        padding: 12,
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.08)",
+        color: "rgba(255,255,255,0.92)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        fontWeight: 900,
+        cursor: replySending ? "not-allowed" : "pointer",
+      }}
+    >
+      Close
+    </button>
+
+    <button
+      onClick={sendThreadReply}
+      disabled={replySending || !replyBody.trim()}
+      style={{
+        flex: 1,
+        padding: 12,
+        borderRadius: 12,
+        background: "#1bbf8a",
+        color: "#06101a",
+        border: "1px solid rgba(255,255,255,0.10)",
+        fontWeight: 900,
+        cursor: replySending || !replyBody.trim() ? "not-allowed" : "pointer",
+        opacity: replySending || !replyBody.trim() ? 0.65 : 1,
+      }}
+    >
+      {replySending ? "Sending..." : "Send Reply"}
+    </button>
+  </div>
+</div>
 
     </div>
 
@@ -1567,22 +1717,62 @@ opacity: sessionEmail ? 1 : 0.6,
                 <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, whiteSpace: "pre-wrap" }}>
                   {m.body}
                 </div>
-                <button
-  onClick={() => deleteMessage(m.id)}
-  style={{
-    marginTop: 10,
-    padding: "6px 10px",
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "#7f1d1d",
-    color: "white",
-    fontWeight: 900,
-    cursor: "pointer",
-    fontSize: 12,
-  }}
->
-  Delete
-</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 2 }}>
+  <button
+    onClick={async () => {
+      await loadThread(m.trade_id);
+
+      const me = (await supabase.auth.getUser()).data.user?.id;
+      if (me) {
+        await supabase
+          .from("messages")
+          .update({ read_at: new Date().toISOString() })
+          .eq("trade_id", m.trade_id)
+          .eq("to_user_id", me)
+          .is("read_at", null);
+      }
+
+      await loadInbox();
+      setActiveThreadTradeId(m.trade_id);
+      setInboxOpen(true);
+    }}
+    style={{
+      padding: "6px 10px",
+      borderRadius: 10,
+      border: "1px solid rgba(255,255,255,0.15)",
+      background: "rgba(255,255,255,0.08)",
+      color: "white",
+      fontWeight: 900,
+      cursor: "pointer",
+      fontSize: 12,
+      height: 32,
+      whiteSpace: "nowrap",
+    }}
+    title="Reply"
+  >
+    Reply
+  </button>
+
+  <button
+    onClick={() => deleteMessage(m.id)}
+    style={{
+      padding: "6px 10px",
+      borderRadius: 10,
+      border: "1px solid rgba(255,255,255,0.15)",
+      background: "#7f1d1d",
+      color: "white",
+      fontWeight: 900,
+      cursor: "pointer",
+      fontSize: 12,
+      height: 32,
+      whiteSpace: "nowrap",
+    }}
+    title="Delete message"
+  >
+    Delete
+  </button>
+</div>
+
 
               </div>
             ))}
