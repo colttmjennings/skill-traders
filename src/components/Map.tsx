@@ -1157,6 +1157,7 @@ lineHeight: 1.45,
         background: "rgba(255,255,255,0.03)",
         marginTop: 10,
         minWidth: 0,
+        overflowX: "hidden",
       }}
     >
       <button
@@ -1225,10 +1226,30 @@ lineHeight: 1.45,
       </button>
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          deleteMessage(m.id);
-        }}
+        onClick={async (e) => {
+  e.stopPropagation();
+
+  const me = sessionUserId;
+  if (!me) return;
+
+  // Delete the entire conversation (thread)
+  await supabase
+    .from("messages")
+    .delete()
+    .eq("trade_id", m.trade_id)
+    .or(`from_user_id.eq.${me},to_user_id.eq.${me}`);
+
+  // If this thread is open, close it
+  if (activeThreadTradeId === m.trade_id) {
+    setActiveThreadTradeId(null);
+    setThreadMsgs([]);
+    setInboxOpen(false);
+  }
+
+  // Refresh inbox so row disappears
+  await loadInbox();
+}}
+
         style={{
           flexShrink: 0,
           padding: "6px 10px",
@@ -1278,7 +1299,12 @@ lineHeight: 1.45,
 
   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
     <button
-      onClick={() => setInboxOpen(false)}
+      onClick={() => {
+  setReplyBody("");
+  setActiveThreadTradeId(null);
+  setThreadMsgs([]);
+}}
+
       disabled={replySending}
       style={{
         flex: 1,
@@ -1318,38 +1344,23 @@ lineHeight: 1.45,
 
     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
       <button
-        onClick={() => setInboxLimit((n) => n + 5)}
-        style={{
-          flex: 1,
-          padding: "8px 10px",
-          borderRadius: 10,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "rgba(255,255,255,0.06)",
-          color: "white",
-          fontWeight: 900,
-          cursor: "pointer",
-          fontSize: 12,
-        }}
-      >
-        Show more
-        </button>
+  onClick={() => setInboxLimit((v) => (v >= 999 ? 3 : 999))}
+  style={{
+    padding: "6px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.08)",
+    color: "white",
+    fontWeight: 900,
+    cursor: "pointer",
+    fontSize: 12,
+    height: 32,
+    whiteSpace: "nowrap",
+  }}
+>
+  {inboxLimit >= 999 ? "Hide" : "Show"}
+</button>
 
-
-      <button
-        onClick={() => setInboxLimit(3)}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 10,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "rgba(255,255,255,0.06)",
-          color: "white",
-          fontWeight: 900,
-          cursor: "pointer",
-          fontSize: 12,
-        }}
-      >
-        Show less
-      </button>
     </div>
   </div>
 )}
