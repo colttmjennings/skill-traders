@@ -502,39 +502,49 @@ async function loadInbox() {
 
     // Group by trade_id and keep only 1 item (latest) per trade_id
     const byTrade = new globalThis.Map<string, any[]>();
-    for (const r of rows) {
-      if (!r.trade_id) continue;
-      const arr = byTrade.get(r.trade_id) ?? [];
-      arr.push(r);
-      byTrade.set(r.trade_id, arr);
-    }
+for (const r of rows) {
+  if (!r.trade_id) continue;
+  const arr = byTrade.get(r.trade_id) ?? [];
+  arr.push(r);
+  byTrade.set(r.trade_id, arr);
+}
 
-    const grouped = Array.from(byTrade.entries()).map(([trade_id, msgs]: [string, any[]]) => {
-      // newest first for this thread
-      msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+const grouped = Array.from(byTrade.entries()).map(([trade_id, msgs]: [string, any[]]) => {
+  // newest first
+  msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      const latest = msgs[0];
+  const latest = msgs[0];
 
-      // NEW if any message TO me is unread
-      const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
+  // NEW if any message TO me is unread
+  const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
 
-      // "Other person" email for display:
-      // Prefer the most recent inbound message (from != me)
-      const latestInbound = msgs.find((m) => m.from_user_id !== me && m.from_email);
-      const otherEmail = latestInbound?.from_email ?? latest.from_email ?? "Conversation";
+  // Find the "other person" email (someone who is NOT me)
+  // Prefer the newest message where from_user_id !== me
+  const otherMsg =
+    msgs.find((m) => m.from_user_id && m.from_user_id !== me && m.from_email) ??
+    msgs.find((m) => m.to_user_id && m.to_user_id !== me && m.from_email);
 
-      return {
-        ...latest,
-        trade_id,
-        __hasUnread: hasUnread,
-        __otherEmail: otherEmail,
-      };
-    });
+  const otherEmail = otherMsg?.from_email ?? "user";
 
-    // Order inbox threads by latest message time (newest first)
-    grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return {
+    ...latest,
+    trade_id,
+    __hasUnread: hasUnread,
+    __otherEmail: otherEmail,
+  };
+});
 
-    setInbox(grouped as any[]);
+// Sort threads by latest message time
+grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+// IMPORTANT: remove any threads where the "otherEmail" is actually me (prevents self rows)
+const filtered = grouped.filter((m: any) => {
+  const other = (m as any).__otherEmail;
+  return other && other !== sessionEmail;
+});
+
+setInbox(filtered as any[]);
+
   } catch (e: any) {
     setInboxError(e?.message ?? "unknown error");
     setInbox([]);
@@ -1166,16 +1176,30 @@ lineHeight: 1.45,
         cursor: "pointer",
       }}
     >
-      <div
-  style={{
-    fontWeight: 800,
-    fontSize: 13,
-    opacity: 0.95,
-    color: m.read_at ? "rgba(255,255,255,0.92)" : "#1bbf8a",
-  }}
->
-  {m.read_at ? "Message from " : "NEW message from "} {m.from_email ?? "user"}
-</div>
+      {(() => {
+  const otherEmail = (m as any).__otherEmail ?? m.from_email ?? "user";
+  const hasUnread = !!(m as any).__hasUnread;
+
+  return (
+    <div
+      style={{
+        fontWeight: 800,
+        fontSize: 13,
+        opacity: 0.95,
+        color: hasUnread ? "#1bbf8a" : "rgba(255,255,255,0.92)",
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+      title={`${hasUnread ? "NEW message from " : "Message from "}${otherEmail}`}
+    >
+      {hasUnread ? "NEW message from " : "Message from "}
+      {otherEmail}
+    </div>
+  );
+})()}
+
 
 
       <div
@@ -1197,7 +1221,10 @@ lineHeight: 1.45,
     </button>
 
     <button
-      onClick={() => deleteMessage(m.id)}
+      onClick={(e) => {
+  e.stopPropagation();
+  deleteMessage(m.id);
+}}
       style={{
         padding: "6px 10px",
         borderRadius: 10,
