@@ -632,6 +632,16 @@ async function loadTrades() {
     loadTrades();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Auto-refresh map pins every 30 seconds (no Supabase Realtime)
+useEffect(() => {
+  const interval = setInterval(() => {
+    loadTrades();
+  }, 30000); // 30 seconds
+
+  return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
   // Auto-load inbox when session appears (no manual refresh needed)
 useEffect(() => {
   if (!sessionEmail) {
