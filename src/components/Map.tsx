@@ -1598,7 +1598,8 @@ lineHeight: 1.45,
   {selectedTrade.type} • {selectedTrade.category}
 </div>
 
-            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: selectedTrade.user_id === sessionUserId ? 8 : 0 }}>
+
   <button
     onClick={() => {
   if (!sessionEmail) {
@@ -1626,6 +1627,7 @@ opacity: sessionEmail ? 1 : 0.6,
   >
     Message
   </button>
+{selectedTrade.user_id === sessionUserId && (
 
   <button
     onClick={() => deleteTrade(selectedTrade.id)}
@@ -1643,6 +1645,7 @@ opacity: sessionEmail ? 1 : 0.6,
   >
     Remove Post
   </button>
+  )}
 </div>
 
 {/* My Pins */}
