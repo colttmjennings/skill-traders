@@ -15,6 +15,8 @@ type Trade = {
   lng: number; // IMPORTANT: lng (not "i")
   lat: number;
   user_id?: string | null;
+  status?: "active" | "completed";
+
 };
 
 const BRAND = {
@@ -606,7 +608,7 @@ async function loadTrades() {
   try {
     const { data, error } = await supabase
       .from("trades")
-      .select("id, created_at, type, category, title, lng, lat, user_id")
+      .select("id, created_at, type, category, title, lng, lat, user_id, status")
       .order("created_at", { ascending: false })
       .limit(500);
 
@@ -626,6 +628,7 @@ async function loadTrades() {
         lng: Number(row.lng),
         lat: Number(row.lat),
         user_id: row.user_id ?? null,
+        status: row.status ?? "active",
       }))
       .filter((t) => isValidCoord(t.lng, t.lat));
 
@@ -1646,6 +1649,38 @@ opacity: sessionEmail ? 1 : 0.6,
     Remove Post
   </button>
   )}
+
+  {selectedTrade.user_id === sessionUserId && selectedTrade.status !== "completed" && (
+  <button
+    onClick={async () => {
+      const { error } = await supabase
+        .from("trades")
+        .update({ status: "completed" })
+        .eq("id", selectedTrade.id);
+
+      if (error) {
+        alert(`Update failed: ${error.message}`);
+        return;
+      }
+
+      await loadTrades();
+    }}
+    style={{
+      width: "100%",
+      padding: 11,
+      borderRadius: 12,
+      background: "#334155",
+      border: "1px solid rgba(255,255,255,0.15)",
+      color: "white",
+      fontWeight: 900,
+      fontSize: 15,
+      cursor: "pointer",
+    }}
+  >
+    Mark Completed
+  </button>
+)}
+
 </div>
 
 {/* My Pins */}
