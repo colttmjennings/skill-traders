@@ -154,6 +154,8 @@ useEffect(() => {
 }, []);
 
 const [isMobile, setIsMobile] = useState(false);
+const [panelCollapsed, setPanelCollapsed] = useState(false);
+
 
 useEffect(() => {
   if (typeof window === "undefined") return;
@@ -966,12 +968,23 @@ setTimeout(() => setStatus(""), 1200);
   >
       {/* MAP */}
       <div
+      onClick={() => {
+  if (panelCollapsed) {
+    setPanelCollapsed(false);
+    setTimeout(() => mapRef.current?.resize(), 80);
+  }
+}}
+
   style={{
-    flex: isMobile ? "0 0 auto" : 1,
+    flex: panelCollapsed ? "0 0 auto" : isMobile ? "0 0 auto" : 1,
     position: "relative",
-    height: isMobile ? "45vh" : "100%",
+    height: isMobile ? (panelCollapsed ? "64px" : "45vh") : "100%",
+    width: !isMobile ? (panelCollapsed ? 56 : undefined) : undefined,
+    minWidth: !isMobile ? (panelCollapsed ? 56 : undefined) : undefined,
+    overflow: panelCollapsed ? "hidden" : "visible",
   }}
 >
+
 {showTutorial && (
   <div
     style={{
@@ -1022,6 +1035,35 @@ setTimeout(() => setStatus(""), 1200);
     </div>
   </div>
 )}
+{/* Collapse / Expand Map Button */}
+<button
+  onClick={() => {
+    // toggle
+    setPanelCollapsed((v: boolean) => !v);
+
+    // after layout changes, force map resize so it redraws correctly
+    setTimeout(() => {
+      mapRef.current?.resize();
+    }, 80);
+  }}
+  style={{
+    position: "absolute",
+    zIndex: 25,
+    top: 12,
+    right: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(15,28,46,0.92)",
+    color: "rgba(255,255,255,0.95)",
+    fontWeight: 900,
+    cursor: "pointer",
+    backdropFilter: "blur(6px)",
+  }}
+>
+  {panelCollapsed ? "Show Map" : "Hide Map"}
+</button>
+
 
         <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} />
 
@@ -1050,7 +1092,7 @@ setTimeout(() => setStatus(""), 1200);
       {/* RIGHT PANEL */}
       <div
         style={{
-          width: isMobile ? "100%" : 360,
+          width: isMobile ? "100%" : (panelCollapsed ? "calc(100% - 56px)" : 360),
           borderLeft: isMobile ? "none" : `1px solid ${UI.panelBorder}`,
           background: UI.panelBg,
           color: UI.text,
@@ -1061,7 +1103,7 @@ setTimeout(() => setStatus(""), 1200);
           gap: 12,
           overflow: "auto",
           fontSize: 15,
-          height: isMobile ? "55vh" : "100%",
+          height: isMobile ? (panelCollapsed ? "calc(100vh - 64px)" : "55vh") : "100%",
 borderTop: isMobile ? `1px solid ${UI.panelBorder}` : undefined,
 
 fontWeight: 500,
@@ -1317,7 +1359,7 @@ lineHeight: 1.45,
         cursor: replySending ? "not-allowed" : "pointer",
       }}
     >
-      Close
+      Close Thread
     </button>
 
     <button
