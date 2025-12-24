@@ -333,6 +333,16 @@ async function sendThreadReply() {
     () => trades.find((t) => t.id === selectedTradeId) ?? null,
     [trades, selectedTradeId]
   );
+  const myPins = useMemo(() => {
+  if (!sessionUserId) return [];
+  return trades
+    .filter((t) => t.user_id === sessionUserId)
+    .sort(
+      (a, b) =>
+        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+    );
+}, [trades, sessionUserId]);
+
 
 
   const filteredTrades = useMemo(() => {
@@ -1634,6 +1644,46 @@ opacity: sessionEmail ? 1 : 0.6,
     Remove Post
   </button>
 </div>
+
+{/* My Pins */}
+{sessionUserId && (
+  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${UI.panelBorder}` }}>
+    <div style={{ fontWeight: 900, marginBottom: 8 }}>My Pins</div>
+
+    {myPins.length === 0 ? (
+      <div style={{ fontSize: 13, opacity: 0.8 }}>You haven’t posted any pins yet.</div>
+    ) : (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {myPins
+          .filter((t) => t.id !== selectedTrade.id)
+          .slice(0, 8)
+          .map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedTradeId(t.id)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: 10,
+                borderRadius: 12,
+                border: `1px solid ${UI.panelBorder}`,
+                background: "rgba(255,255,255,0.04)",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 2 }}>
+                {t.title}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>
+                {t.type} • {t.category}
+              </div>
+            </button>
+          ))}
+      </div>
+    )}
+  </div>
+)}
 
 
           </div>
