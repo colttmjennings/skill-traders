@@ -1653,16 +1653,56 @@ opacity: sessionEmail ? 1 : 0.6,
   {selectedTrade.user_id === sessionUserId && selectedTrade.status !== "completed" && (
   <button
     onClick={async () => {
-      const { error } = await supabase
-        .from("trades")
-        .update({ status: "completed" })
-        .eq("id", selectedTrade.id);
+      const ownerId = selectedTrade.user_id;
 
-      if (error) {
-        alert(`Update failed: ${error.message}`);
+      if (!ownerId || ownerId !== sessionUserId) {
+        alert("Only the owner can complete this post.");
         return;
       }
 
+      const completedBy =
+        (await supabase.auth.getUser()).data.user?.id ?? null;
+
+      if (!completedBy) {
+        alert("You must be signed in to complete a post.");
+        return;
+      }
+
+      // 1) Archive into completed_trades
+      const { error: insertErr } = await supabase
+        .from("completed_trades")
+        .insert([
+          {
+            trade_id: selectedTrade.id,
+            original_created_at: selectedTrade.created_at ?? null,
+            type: selectedTrade.type ?? null,
+            category: selectedTrade.category ?? null,
+            title: selectedTrade.title ?? null,
+            lng: selectedTrade.lng ?? null,
+            lat: selectedTrade.lat ?? null,
+            owner_user_id: ownerId,
+            completed_by_user_id: completedBy,
+          },
+        ]);
+
+      if (insertErr) {
+        alert(`Archive failed: ${insertErr.message}`);
+        return;
+      }
+
+      // 2) Delete from active trades
+      const { error: delErr } = await supabase
+        .from("trades")
+        .delete()
+        .eq("id", selectedTrade.id);
+
+      if (delErr) {
+        alert(`Delete failed: ${delErr.message}`);
+        return;
+      }
+
+      // 3) Refresh UI
+      setSelectedTradeId(null);
       await loadTrades();
     }}
     style={{
@@ -1680,6 +1720,7 @@ opacity: sessionEmail ? 1 : 0.6,
     Mark Completed
   </button>
 )}
+
 
 </div>
 
