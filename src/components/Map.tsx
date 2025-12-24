@@ -397,11 +397,13 @@ const { data: authListener } = supabase.auth.onAuthStateChange((_event, session)
     if (mapRef.current) return;
 
     const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [-94.5786, 39.0997], // Kansas City-ish
-      zoom: 10.5,
-    });
+  container: mapContainerRef.current,
+  style: "https://tiles.openfreemap.org/styles/liberty",
+  center: [-94.5786, 39.0997], // Kansas City-ish
+  zoom: 10.5,
+  attributionControl: false,
+});
+
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
@@ -811,6 +813,8 @@ if (!sessionEmail) {
       }
 
       // Add it to local list immediately
+      await loadTrades();
+
 const added: Trade = {
   id: String((data as any).id),
   created_at: (data as any).created_at,
@@ -979,8 +983,8 @@ setTimeout(() => setStatus(""), 1200);
     flex: panelCollapsed ? "0 0 auto" : isMobile ? "0 0 auto" : 1,
     position: "relative",
     height: isMobile ? (panelCollapsed ? "64px" : "45vh") : "100%",
-    width: !isMobile ? (panelCollapsed ? 56 : undefined) : undefined,
-    minWidth: !isMobile ? (panelCollapsed ? 56 : undefined) : undefined,
+    width: !isMobile ? (panelCollapsed ? 96 : undefined) : undefined,
+    minWidth: !isMobile ? (panelCollapsed ? 96 : undefined) : undefined,
     overflow: panelCollapsed ? "hidden" : "visible",
   }}
 >
@@ -1038,10 +1042,8 @@ setTimeout(() => setStatus(""), 1200);
 {/* Collapse / Expand Map Button */}
 <button
   onClick={() => {
-    // toggle
     setPanelCollapsed((v: boolean) => !v);
 
-    // after layout changes, force map resize so it redraws correctly
     setTimeout(() => {
       mapRef.current?.resize();
     }, 80);
@@ -1050,8 +1052,12 @@ setTimeout(() => setStatus(""), 1200);
     position: "absolute",
     zIndex: 25,
     top: 12,
-    right: 12,
-    padding: "10px 12px",
+
+    // keep button visible when map collapses on desktop
+    right: panelCollapsed && !isMobile ? undefined : 12,
+    left: panelCollapsed && !isMobile ? 6 : undefined,
+
+    padding: panelCollapsed && !isMobile ? "10px 8px" : "10px 12px",
     borderRadius: 12,
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(15,28,46,0.92)",
@@ -1059,40 +1065,23 @@ setTimeout(() => setStatus(""), 1200);
     fontWeight: 900,
     cursor: "pointer",
     backdropFilter: "blur(6px)",
+    whiteSpace: "nowrap",
   }}
 >
   {panelCollapsed ? "Show Map" : "Hide Map"}
 </button>
 
 
+
         <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} />
 
-        {/* top-left mini status */}
-        <div
-          style={{
-            position: "absolute",
-            top: 12,
-            left: 12,
-            background: "rgba(0,0,0,0.6)",
-            color: "white",
-            padding: "10px 12px",
-            borderRadius: 12,
-            fontFamily: "system-ui",
-            fontSize: 12,
-            maxWidth: 360,
-            backdropFilter: "blur(6px)",
-          }}
-        >
-
-
-          
-        </div>
+        
       </div>
 
       {/* RIGHT PANEL */}
       <div
         style={{
-          width: isMobile ? "100%" : (panelCollapsed ? "calc(100% - 56px)" : 360),
+          width: isMobile ? "100%" : (panelCollapsed ? "calc(100% - 96px)" : 360),
           borderLeft: isMobile ? "none" : `1px solid ${UI.panelBorder}`,
           background: UI.panelBg,
           color: UI.text,
