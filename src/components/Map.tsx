@@ -207,6 +207,9 @@ const [authOpen, setAuthOpen] = useState(false);
 const [authEmail, setAuthEmail] = useState("");
 const [authSending, setAuthSending] = useState(false);
 const [authSent, setAuthSent] = useState(false);
+const [authPassword, setAuthPassword] = useState("");
+const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+
 const [showTutorial, setShowTutorial] = useState(false);
 
 useEffect(() => {
@@ -922,6 +925,37 @@ async function deleteMessage(messageId: string) {
   setThreadMsgs((prev) => prev.filter((m) => m.id !== messageId));
   await loadInbox();
 
+}
+async function doAuth(mode: "login" | "signup") {
+  if (authSending) return;
+  if (!authEmail.trim()) return;
+  if (!authPassword) return;
+
+  try {
+    setAuthSending(true);
+    setAuthSent(false);
+    setAuthMode(mode);
+
+    if (mode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+
+      if (error) alert(error.message);
+      else setAuthOpen(false);
+    } else {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+
+      if (error) alert(error.message);
+      else setAuthSent(true);
+    }
+  } finally {
+    setAuthSending(false);
+  }
 }
 
 async function logout() {
@@ -1884,6 +1918,7 @@ opacity: sessionEmail ? 1 : 0.6,
         }}
       />
 
+
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <button
           onClick={() => {
@@ -2150,7 +2185,7 @@ opacity: sessionEmail ? 1 : 0.6,
   </div>
 
   <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 10 }}>
-    We’ll email you a magic link. No password.
+    Log in with your email and password.
   </div>
 
   <label style={{ fontSize: 13, opacity: 0.85 }}>Email</label>
@@ -2173,12 +2208,83 @@ opacity: sessionEmail ? 1 : 0.6,
       marginBottom: 10,
     }}
   />
+    <label style={{ fontSize: 13, opacity: 0.85 }}>Password</label>
+  <input
+    type="password"
+    value={authPassword}
+    onChange={(e) => setAuthPassword(e.target.value)}
+    placeholder="Your password"
+    disabled={authSending}
+    style={{
+      width: "100%",
+      padding: 11,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.06)",
+      color: "rgba(255,255,255,0.92)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      fontSize: 14,
+      fontWeight: 600,
+      outline: "none",
+      marginTop: 6,
+      marginBottom: 10,
+    }}
+  />
+<div style={{ display: "flex", gap: 10, marginTop: 10, marginBottom: 2 }}>
+  <button
+    type="button"
+    onClick={() => doAuth("login")}
+disabled={authSending || !authEmail.trim() || !authPassword}
+
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: authMode === "login" ? "#1bbf8a" : "rgba(255,255,255,0.08)",
+      color: authMode === "login" ? "#06101a" : "rgba(255,255,255,0.92)",
+      fontWeight: 900,
+      cursor: "pointer",
+    }}
+  >
+    Log in
+  </button>
+
+  <button
+    type="button"
+    onClick={() => doAuth("signup")}
+    disabled={authSending || !authEmail.trim() || !authPassword}
+
+
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: authMode === "signup" ? "#1bbf8a" : "rgba(255,255,255,0.08)",
+      color: authMode === "signup" ? "#06101a" : "rgba(255,255,255,0.92)",
+      fontWeight: 900,
+      cursor: "pointer",
+    }}
+  >
+    Sign up
+  </button>
+</div>
+
 
   {authSent && (
-    <div style={{ fontSize: 13, marginTop: 6, marginBottom: 10, color: "#1bbf8a", fontWeight: 800 }}>
-      Magic link sent — check your email.
-    </div>
-  )}
+  <div
+    style={{
+      fontSize: 13,
+      marginTop: 6,
+      marginBottom: 10,
+      color: "#1bbf8a",
+      fontWeight: 800,
+    }}
+  >
+    Account created — you can log in now.
+  </div>
+)}
+
 
   <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
     <button
@@ -2200,46 +2306,7 @@ opacity: sessionEmail ? 1 : 0.6,
       Cancel
     </button>
 
-    <button
-      onClick={async () => {
-        if (authSending) return;
-        if (!authEmail.trim()) return;
-
-        try {
-          setAuthSending(true);
-          setAuthSent(false);
-
-          const { error } = await supabase.auth.signInWithOtp({
-            email: authEmail.trim(),
-            options: {
-              emailRedirectTo: `${window.location.origin}/map`,
-            },
-          });
-
-          if (error) {
-            alert(error.message);
-          } else {
-            setAuthSent(true);
-          }
-        } finally {
-          setAuthSending(false);
-        }
-      }}
-      disabled={authSending || !authEmail.trim()}
-      style={{
-        flex: 1,
-        padding: 12,
-        borderRadius: 12,
-        background: "#1bbf8a",
-        color: "#06101a",
-        border: "1px solid rgba(255,255,255,0.10)",
-        fontWeight: 900,
-        cursor: authSending || !authEmail.trim() ? "not-allowed" : "pointer",
-        opacity: authSending || !authEmail.trim() ? 0.7 : 1,
-      }}
-    >
-      {authSending ? "Sending..." : "Send link"}
-    </button>
+    
   </div>
 </div>
 
