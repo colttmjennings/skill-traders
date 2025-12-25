@@ -144,16 +144,37 @@ export default function Map({
 
 
 useEffect(() => {
-  // If we came from a Supabase magic link, tokens may be in the URL hash.
-  // Force Supabase to read/persist them, then remove the hash from the URL.
+  // If we came from a Supabase email link, tokens are in the URL hash.
+  // For password recovery, we MUST keep the hash and forward it to /auth/reset.
   if (typeof window === "undefined") return;
 
-  if (window.location.hash && window.location.hash.includes("access_token")) {
-    supabase.auth.getSession().finally(() => {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    });
+  const hash = window.location.hash || "";
+  if (!hash) return;
+
+  const isRecovery = hash.includes("type=recovery");
+  const hasAccessToken = hash.includes("access_token");
+
+  if (!hasAccessToken) return;
+
+  // If this is a recovery link and we're not already on /auth/reset,
+  // forward the hash intact so the reset page can read it.
+  if (isRecovery && window.location.pathname !== "/auth/reset") {
+    window.location.replace(`/auth/reset${hash}`);
+    return;
   }
+
+  // Normal magic-link / login case: let Supabase persist the session, then clean the URL.
+  supabase.auth.getSession().finally(() => {
+    if (!isRecovery) {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search
+      );
+    }
+  });
 }, []);
+
 
 const [isMobile, setIsMobile] = useState(false);
 const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -926,6 +947,27 @@ async function deleteMessage(messageId: string) {
   await loadInbox();
 
 }
+async function requestPasswordReset() {
+  if (authSending) return;
+  if (!authEmail.trim()) {
+    alert("Enter your email first.");
+    return;
+  }
+
+  try {
+    setAuthSending(true);
+    // send reset email that redirects to your hosted reset page
+    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), {
+      redirectTo: "https://skill-traders.com/auth/reset",
+    });
+
+    if (error) alert(error.message);
+    else alert("Password reset email sent. Check your inbox.");
+  } finally {
+    setAuthSending(false);
+  }
+}
+
 async function doAuth(mode: "login" | "signup") {
   if (authSending) return;
   if (!authEmail.trim()) return;
@@ -2269,6 +2311,26 @@ disabled={authSending || !authEmail.trim() || !authPassword}
     Sign up
   </button>
 </div>
+<button
+  type="button"
+  onClick={requestPasswordReset}
+  disabled={authSending || !authEmail.trim()}
+  style={{
+    marginTop: 10,
+    width: "100%",
+    padding: 10,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.88)",
+    fontWeight: 800,
+    cursor: authSending || !authEmail.trim() ? "not-allowed" : "pointer",
+    opacity: authSending || !authEmail.trim() ? 0.7 : 1,
+  }}
+>
+  Forgot password?
+</button>
+
 
 
   {authSent && (
