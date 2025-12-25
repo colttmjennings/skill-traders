@@ -42,7 +42,7 @@ export default function Page() {
         fontSize: 24,
         fontWeight: 950,
         letterSpacing: 0.4,
-        color: "#22c55e",
+        color: "#22d3c5",
         lineHeight: 1,
       }}
     >
@@ -124,24 +124,46 @@ Just{" "}
 
           </h1>
 
-          <Link href="/map?login=1" style={{ textDecoration: "none" }}>
-  <button
-    type="button"
-    style={{
-      padding: "16px 24px",
-      borderRadius: 16,
-      border: "1px solid rgba(255,255,255,0.16)",
-      background: "#22c55e",
-      color: "#06101a",
-      fontWeight: 950,
-      fontSize: 18,
-      cursor: "pointer",
-      boxShadow: "0 12px 34px rgba(0,0,0,0.38)",
-    }}
-  >
-    Log in
-  </button>
-</Link>
+          <div style={{ marginTop: 18, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+  <Link href="/map?login=1" style={{ textDecoration: "none" }}>
+    <button
+      type="button"
+      style={{
+        padding: "16px 24px",
+        borderRadius: 16,
+        border: "1px solid rgba(255,255,255,0.16)",
+        background: "#22c55e",
+        color: "#06101a",
+        fontWeight: 950,
+        fontSize: 18,
+        cursor: "pointer",
+        boxShadow: "0 12px 34px rgba(0,0,0,0.38)",
+      }}
+    >
+      Log in
+    </button>
+  </Link>
+
+  <Link href="/map?login=1&auth=signup" style={{ textDecoration: "none" }}>
+    <button
+      type="button"
+      style={{
+        padding: "16px 24px",
+        borderRadius: 16,
+        border: "1px solid rgba(255,255,255,0.14)",
+        background: "rgba(255,255,255,0.08)",
+        color: "#22d3c5",
+        fontWeight: 900,
+        fontSize: 18,
+        cursor: "pointer",
+      }}
+    >
+      Sign up
+    </button>
+  </Link>
+</div>
+
+
 
 
           {/* Post / Find — green text, muted background */}

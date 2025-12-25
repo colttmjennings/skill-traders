@@ -225,6 +225,22 @@ const [messageOpen, setMessageOpen] = useState(false);
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 const [authOpen, setAuthOpen] = useState(false);
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const sp = new URLSearchParams(window.location.search);
+
+  // If URL says login=1, open the auth modal
+  if (sp.get("login") === "1") {
+    setAuthOpen(true);
+    setAuthSent(false);
+
+    // If URL says auth=signup, default to signup mode
+    if (sp.get("auth") === "signup") setAuthMode("signup");
+    else setAuthMode("login");
+  }
+}, []);
+
 const [authEmail, setAuthEmail] = useState("");
 const [authSending, setAuthSending] = useState(false);
 const [authSent, setAuthSent] = useState(false);

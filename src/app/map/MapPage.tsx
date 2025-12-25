@@ -67,7 +67,7 @@ export default function MapPage({
       fontSize: 22,
       fontWeight: 900,
       letterSpacing: 0.4,
-      color: "#22c55e",
+      color: "#22d3c5",
       lineHeight: 1,
     }}
   >
