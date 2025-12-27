@@ -223,8 +223,6 @@ useEffect(() => {
 const [messageOpen, setMessageOpen] = useState(false);
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-const [sessionLabel, setSessionLabel] = useState<string | null>(null);
-
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile">("main");
@@ -749,10 +747,13 @@ async function loadTrades() {
 
   try {
     const { data, error } = await supabase
-      .from("trades")
-      .select("id, created_at, type, category, title, lng, lat, user_id, status")
-      .order("created_at", { ascending: false })
-      .limit(500);
+  .from("trades")
+  .select("id, created_at, type, category, title, lng, lat, user_id, status")
+  .not("lng", "is", null)
+  .not("lat", "is", null)
+  .order("created_at", { ascending: false })
+  .limit(500);
+
 
     if (error) {
       setStatus(error.message);
