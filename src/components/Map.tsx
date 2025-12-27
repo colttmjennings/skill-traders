@@ -688,21 +688,15 @@ async function loadInbox() {
       const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
 
       // Pick any message that involves the other user
-      const otherMsg =
-        msgs.find((m) => m.from_user_id && m.from_user_id !== me) ??
-        msgs.find((m) => m.to_user_id && m.to_user_id !== me) ??
-        latest;
+const otherMsg =
+  msgs.find((m) => m.from_user_id && m.from_user_id !== me) ??
+  msgs.find((m) => m.to_user_id && m.to_user_id !== me) ??
+  latest;
 
-      // Determine the "other" username if present
-      const otherUsername =
-        otherMsg?.from_user_id && otherMsg.from_user_id !== me
-          ? otherMsg?.from_profile?.username
-          : otherMsg?.to_profile?.username;
+// Fallback label (email only for now; usernames come next step)
+const otherEmail = otherMsg?.from_email ?? "user";
+const otherLabel = otherEmail;
 
-      // Fallback email
-      const otherEmail = otherMsg?.from_email ?? "user";
-
-      const otherLabel = otherUsername ? `@${otherUsername}` : otherEmail;
 
       return {
         ...latest,
@@ -773,7 +767,7 @@ async function loadTrades() {
   try {
     const { data, error } = await supabase
   .from("trades")
-.select("id, created_at, type, category, title, lng, lat, user_id, status, profiles:profiles(username)")
+.select("id, created_at, type, category, title, lng, lat, user_id, status")
 
   .not("lng", "is", null)
   .not("lat", "is", null)
@@ -797,7 +791,6 @@ async function loadTrades() {
     lng: Number(row.lng),
     lat: Number(row.lat),
     user_id: row.user_id ?? null,
-    username: row?.profiles?.username ?? null,
 
     status: row.status ?? "active",
   }))
