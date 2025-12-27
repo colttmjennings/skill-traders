@@ -512,37 +512,49 @@ useEffect(() => {
 }, [isMobile]);
 
 
+// 0) Auth session: restore + listen for changes
+useEffect(() => {
+  let isMounted = true;
+
+  supabase.auth.getSession().then(({ data }) => {
+    if (!isMounted) return;
+
+    const email = data.session?.user?.email ?? null;
+    const uid = data.session?.user?.id ?? null;
+
+    setSessionEmail(email);
+    setSessionUserId(uid);
+
+    if (email) {
+      setAuthEmail(email);
+      setAuthOpen(false);
+      setAuthSent(false);
+    }
+  });
+
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const email = session?.user?.email ?? null;
+    const uid = session?.user?.id ?? null;
+
+    setSessionEmail(email);
+    setSessionUserId(uid);
+
+    if (email) {
+      setAuthEmail(email);
+      setAuthOpen(false);
+      setAuthSent(false);
+    }
+  });
+
+  return () => {
+    isMounted = false;
+    authListener.subscription.unsubscribe();
+  };
+}, []);
 
   // 1) Init map once
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    // Auth session: get current session + listen for changes
-    supabase.auth.getSession();
-
-supabase.auth.getSession().then(({ data }) => {
-  const email = data.session?.user?.email ?? null;
-  const uid = data.session?.user?.id ?? null;
-
-  setSessionEmail(email);
-  setSessionUserId(uid);
-
-  if (email) setAuthEmail(email);
-});
-
-
-const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-  const email = session?.user?.email ?? null;
-  const uid = session?.user?.id ?? null;
-
-  setSessionEmail(email);
-  setSessionUserId(uid);
-
-  if (email) {
-    setAuthEmail(email);
-    setAuthOpen(false); // close auth modal on login
-    setAuthSent(false); // reset
-  }
-});
 
 
 
@@ -570,10 +582,10 @@ const { data: authListener } = supabase.auth.onAuthStateChange((_event, session)
 
 
     return () => {
-  authListener.subscription.unsubscribe();
   map.remove();
   mapRef.current = null;
 };
+
 
 
   }, []);
