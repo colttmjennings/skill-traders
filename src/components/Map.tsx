@@ -132,6 +132,16 @@ function isValidCoord(lng: any, lat: any) {
     Lng <= 180
   );
 }
+function isUnder18(birthdate: string) {
+  const d = new Date(birthdate);
+  if (Number.isNaN(d.getTime())) return false;
+
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age < 18;
+}
 
 export default function Map({
   mode,
@@ -198,6 +208,7 @@ type ProfileRow = {
   username: string | null;
   first_name: string | null;
   last_name: string | null;
+  birthdate: string | null;
   avatar_url: string | null;
   skills: string[] | null;
   bio: string | null;
@@ -210,6 +221,7 @@ const [profileError, setProfileError] = useState<string>("");
 const [pUsername, setPUsername] = useState("");
 const [pFirstName, setPFirstName] = useState("");
 const [pLastName, setPLastName] = useState("");
+const [pBirthdate, setPBirthdate] = useState("");
 const [pBio, setPBio] = useState("");
 const [pSkillsText, setPSkillsText] = useState(""); // comma-separated
 
@@ -221,7 +233,7 @@ async function loadMyProfile() {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, first_name, last_name, avatar_url, skills, bio")
+      .select("id, username, first_name, last_name, birthdate, avatar_url, skills, bio")
       .eq("id", sessionUserId)
       .single();
 
@@ -235,6 +247,7 @@ async function loadMyProfile() {
     setPUsername(row.username ?? "");
     setPFirstName(row.first_name ?? "");
     setPLastName(row.last_name ?? "");
+    setPBirthdate(row.birthdate ?? "");
     setPBio(row.bio ?? "");
     setPSkillsText((row.skills ?? []).join(", "));
   } finally {
@@ -257,6 +270,7 @@ async function saveMyProfile() {
       username: pUsername.trim() || null,
       first_name: pFirstName.trim() || null,
       last_name: pLastName.trim() || null,
+      birthdate: pBirthdate || null,
       bio: pBio.trim() || null,
       skills,
     }).eq("id", sessionUserId);
@@ -722,7 +736,7 @@ async function loadTrades() {
   try {
     const { data, error } = await supabase
   .from("trades")
-  .select("id, created_at, type, category, title, lng, lat, user_id, status")
+  .select("id, created_at, type, category, title, lng, lat, user_id, status, profiles:profiles(username)")
   .not("lng", "is", null)
   .not("lat", "is", null)
   .order("created_at", { ascending: false })
@@ -736,18 +750,20 @@ async function loadTrades() {
     }
 
     const clean: Trade[] = (data ?? [])
-      .map((row: any) => ({
-        id: String(row.id),
-        created_at: row.created_at,
-        type: row.type ?? "offer",
-        category: row.category ?? "General",
-        title: row.title ?? "Untitled",
-        lng: Number(row.lng),
-        lat: Number(row.lat),
-        user_id: row.user_id ?? null,
-        status: row.status ?? "active",
-      }))
-      .filter((t) => isValidCoord(t.lng, t.lat));
+  .map((row: any) => ({
+    id: String(row.id),
+    created_at: row.created_at,
+    type: row.type ?? "offer",
+    category: row.category ?? "General",
+    title: row.title ?? "Untitled",
+    lng: Number(row.lng),
+    lat: Number(row.lat),
+    user_id: row.user_id ?? null,
+    status: row.status ?? "active",
+    username: row.profiles?.username ?? null,
+  }))
+  .filter((t) => isValidCoord(t.lng, t.lat));
+
 
     // Fetch usernames for the user_ids on these trades
 const ids = Array.from(new Set(clean.map((t) => t.user_id).filter(Boolean))) as string[];
@@ -1415,7 +1431,7 @@ setTimeout(() => setStatus(""), 1200);
         {pUsername?.trim() ? `@${pUsername.trim()}` : "—"}
       </span>
     </div>
-    
+
     <div style={{ marginTop: 6 }}>
       <span style={{ opacity: 0.75 }}>Bio:</span>{" "}
       <span style={{ fontWeight: 700 }}>
@@ -1455,7 +1471,30 @@ setTimeout(() => setStatus(""), 1200);
             <label style={{ fontSize: 13, opacity: 0.85 }}>Last name</label>
             <input value={pLastName} onChange={(e) => setPLastName(e.target.value)} style={S.input} />
           </div>
+          
         </div>
+<label style={{ fontSize: 13, opacity: 0.85 }}>Birthdate (private)</label>
+<input
+  type="date"
+  value={pBirthdate}
+  onChange={(e) => setPBirthdate(e.target.value)}
+  style={S.input}
+/>
+{pBirthdate && isUnder18(pBirthdate) ? (
+  <div
+    style={{
+      marginTop: 8,
+      padding: 10,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.14)",
+      background: "rgba(255,255,255,0.06)",
+      fontSize: 13,
+      opacity: 0.95,
+    }}
+  >
+    For your safety, please meet in a safe public place when making trades.
+  </div>
+) : null}
 
         <label style={{ fontSize: 13, opacity: 0.85 }}>Skills (comma separated)</label>
         <input value={pSkillsText} onChange={(e) => setPSkillsText(e.target.value)} placeholder="Mechanic, Tattoo Artist, Knitting" style={S.input} />
@@ -1980,6 +2019,12 @@ setTimeout(() => setStatus(""), 1200);
 </div>
 
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: selectedTrade.user_id === sessionUserId ? 8 : 0 }}>
+
+{selectedTrade?.username ? (
+  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
+    Posted by <span style={{ fontWeight: 900 }}>@{selectedTrade.username}</span>
+  </div>
+) : null}
 
   <button
     onClick={() => {
