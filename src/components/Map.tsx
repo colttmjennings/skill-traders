@@ -143,39 +143,6 @@ export default function Map({
 
 
 
-useEffect(() => {
-  // If we came from a Supabase email link, tokens are in the URL hash.
-  // For password recovery, we MUST keep the hash and forward it to /auth/reset.
-  if (typeof window === "undefined") return;
-
-  const hash = window.location.hash || "";
-  if (!hash) return;
-
-  const isRecovery = hash.includes("type=recovery");
-  const hasAccessToken = hash.includes("access_token");
-
-  if (!hasAccessToken) return;
-
-  // If this is a recovery link and we're not already on /auth/reset,
-  // forward the hash intact so the reset page can read it.
-  if (isRecovery && window.location.pathname !== "/auth/reset") {
-    window.location.replace(`/auth/reset${hash}`);
-    return;
-  }
-
-  // Normal magic-link / login case: let Supabase persist the session, then clean the URL.
-  supabase.auth.getSession().finally(() => {
-    if (!isRecovery) {
-      window.history.replaceState(
-        null,
-        "",
-        window.location.pathname + window.location.search
-      );
-    }
-  });
-}, []);
-
-
 const [isMobile, setIsMobile] = useState(false);
 const [panelCollapsed, setPanelCollapsed] = useState(false);
 

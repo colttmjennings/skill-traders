@@ -2,6 +2,12 @@
 
 import { useSearchParams } from "next/navigation";
 import MapPage from "./MapPage";
+import { useEffect } from "react";
+import { ensureSupabaseHealthy } from "@/lib/supabaseGuard";
+
+useEffect(() => {
+  ensureSupabaseHealthy({ timeoutMs: 3000 });
+}, []);
 
 export default function MapClient() {
   const sp = useSearchParams();

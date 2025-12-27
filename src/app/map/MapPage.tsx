@@ -3,6 +3,9 @@
 import Map from "@/components/Map";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { ensureSupabaseHealthy } from "@/lib/supabaseGuard";
+
+
 
 export default function MapPage({
   mode,
@@ -14,6 +17,9 @@ export default function MapPage({
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
 
+  useEffect(() => {
+    ensureSupabaseHealthy({ timeoutMs: 3000 });
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
