@@ -736,7 +736,7 @@ async function loadTrades() {
   try {
     const { data, error } = await supabase
   .from("trades")
-  .select("id, created_at, type, category, title, lng, lat, user_id, status, profiles:profiles(username)")
+  .select("id, created_at, type, category, title, lng, lat, user_id, status")
   .not("lng", "is", null)
   .not("lat", "is", null)
   .order("created_at", { ascending: false })
