@@ -65,9 +65,11 @@ if (userId) {
   }, []);
 
   async function logout() {
-    await supabase.auth.signOut();
-    setSessionEmail(null);
-  }
+  await supabase.auth.signOut();
+  // hard refresh so both MapPage + Map.tsx reset cleanly
+  window.location.href = "/map";
+}
+
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
