@@ -208,7 +208,6 @@ const [profileSaving, setProfileSaving] = useState(false);
 const [profileError, setProfileError] = useState<string>("");
 
 const [pUsername, setPUsername] = useState("");
-const [pDisplayName, setPDisplayName] = useState("");
 const [pFirstName, setPFirstName] = useState("");
 const [pLastName, setPLastName] = useState("");
 const [pBio, setPBio] = useState("");
@@ -1416,14 +1415,7 @@ setTimeout(() => setStatus(""), 1200);
         {pUsername?.trim() ? `@${pUsername.trim()}` : "—"}
       </span>
     </div>
-
-    <div>
-      <span style={{ opacity: 0.75 }}>Display:</span>{" "}
-      <span style={{ fontWeight: 800 }}>
-        {pDisplayName?.trim() ? pDisplayName.trim() : "—"}
-      </span>
-    </div>
-
+    
     <div style={{ marginTop: 6 }}>
       <span style={{ opacity: 0.75 }}>Bio:</span>{" "}
       <span style={{ fontWeight: 700 }}>
@@ -1453,9 +1445,6 @@ setTimeout(() => setStatus(""), 1200);
 
         <label style={{ fontSize: 13, opacity: 0.85 }}>Username (public)</label>
         <input value={pUsername} onChange={(e) => setPUsername(e.target.value)} placeholder="e.g. coltt" style={S.input} />
-
-        <label style={{ fontSize: 13, opacity: 0.85 }}>Display name (public)</label>
-        <input value={pDisplayName} onChange={(e) => setPDisplayName(e.target.value)} placeholder="e.g. Coltt" style={S.input} />
 
         <div style={{ display: "flex", gap: 10 }}>
           <div style={{ flex: 1 }}>
