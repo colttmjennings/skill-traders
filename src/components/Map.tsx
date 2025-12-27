@@ -16,7 +16,7 @@ type Trade = {
   lat: number;
   user_id?: string | null;
   status?: "active" | "completed";
-
+username?: string | null;
 };
 
 const BRAND = {
@@ -174,6 +174,7 @@ export default function Map({
  
 
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [usernamesById, setUsernamesById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
@@ -752,7 +753,33 @@ async function loadTrades() {
       }))
       .filter((t) => isValidCoord(t.lng, t.lat));
 
-    setTrades(clean);
+    // Fetch usernames for the user_ids on these trades
+const ids = Array.from(new Set(clean.map((t) => t.user_id).filter(Boolean))) as string[];
+
+if (ids.length) {
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .in("id", ids);
+
+  const map: Record<string, string> = {};
+  (profs ?? []).forEach((p: any) => {
+    if (p?.id && p?.username) map[p.id] = p.username;
+  });
+
+  setUsernamesById(map);
+
+  // Attach username onto each trade for easy rendering
+  const withNames = clean.map((t) => ({
+    ...t,
+    username: t.user_id ? map[t.user_id] ?? null : null,
+  }));
+
+  setTrades(withNames as any);
+} else {
+  setTrades(clean);
+}
+
   } catch (e: any) {
     setStatus(e?.message ?? "unknown error");
     setTrades([]);

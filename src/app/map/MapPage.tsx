@@ -24,13 +24,12 @@ export default function MapPage({
 if (userId) {
   const { data: prof } = await supabase
     .from("profiles")
-    .select("username, display_name")
+    .select("username")
     .eq("id", userId)
     .single();
 
   const u = prof?.username ? `@${prof.username}` : null;
-  const d = prof?.display_name ?? null;
-  setSessionLabel(u || d || data.session?.user?.email || null);
+  setSessionLabel(u || data.session?.user?.email || null);
 } else {
   setSessionLabel(data.session?.user?.email ?? null);
 }
