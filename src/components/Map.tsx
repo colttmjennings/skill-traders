@@ -822,7 +822,9 @@ useEffect(() => {
     markersRef.current = [];
 
     filteredTrades.forEach((t) => {
-      if (!isValidCoord(t.lng, t.lat)) return;
+      if (t.lng == null || t.lat == null) return;
+if (!isValidCoord(t.lng, t.lat)) return;
+
 
       const el = document.createElement("div");
 el.style.width = "28px";
