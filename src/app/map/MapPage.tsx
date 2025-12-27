@@ -14,6 +14,8 @@ export default function MapPage({
 }) {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+  const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
+
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -24,15 +26,18 @@ export default function MapPage({
 if (userId) {
   const { data: prof } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, avatar_url")
     .eq("id", userId)
     .single();
 
   const u = prof?.username ? `@${prof.username}` : null;
   setSessionLabel(u || data.session?.user?.email || null);
+  setSessionAvatarUrl(prof?.avatar_url ?? null);
 } else {
   setSessionLabel(data.session?.user?.email ?? null);
+  setSessionAvatarUrl(null);
 }
+
 
       
     });
@@ -45,14 +50,18 @@ if (userId) {
 if (userId) {
   const { data: prof } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, avatar_url")
     .eq("id", userId)
     .single();
 
   const u = prof?.username ? `@${prof.username}` : null;
   setSessionLabel(u || session?.user?.email || null);
+  setSessionAvatarUrl(prof?.avatar_url ?? null);
+
 } else {
   setSessionLabel(session?.user?.email ?? null);
+  setSessionAvatarUrl(null);
+
 }
 
 
@@ -135,6 +144,20 @@ if (userId) {
   }}
   title="Open profile"
 >
+  {sessionAvatarUrl ? (
+  <img
+    src={sessionAvatarUrl}
+    alt="avatar"
+    style={{
+      width: 26,
+      height: 26,
+      borderRadius: 999,
+      objectFit: "cover",
+      border: "1px solid rgba(255,255,255,0.20)",
+      flexShrink: 0,
+    }}
+  />
+) : (
   <div
     style={{
       width: 26,
@@ -145,6 +168,8 @@ if (userId) {
       flexShrink: 0,
     }}
   />
+)}
+
   <div style={{ fontSize: 13, opacity: 0.9, textAlign: "left" }}>
     <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 800 }}>Signed in</div>
     <div style={{ fontSize: 13, fontWeight: 900, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

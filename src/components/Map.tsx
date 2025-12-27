@@ -16,7 +16,7 @@ type Trade = {
   lat: number;
   user_id?: string | null;
   status?: "active" | "completed";
-username?: string | null;
+  username?: string | null;
 };
 
 const BRAND = {
@@ -217,6 +217,7 @@ const [messageOpen, setMessageOpen] = useState(false);
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile">("main");
 /* Profile state + load/save logic */
@@ -631,7 +632,7 @@ useEffect(() => {
 }, [sessionUserId, inboxOpen, activeThreadTradeId]);
 
 
-  // 2.5) Load inbox (one row per thread)
+// 2.5) Load inbox (one row per thread)
 async function loadInbox() {
   if (!sessionEmail) {
     setInbox([]);
@@ -651,7 +652,9 @@ async function loadInbox() {
     // Get messages that involve me (sent OR received)
     const { data, error } = await supabase
       .from("messages")
-      .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
+      .select(
+        "id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at, from_profile:profiles!messages_from_user_id_fkey(username), to_profile:profiles!messages_to_user_id_fkey(username)"
+      )
       .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -664,51 +667,64 @@ async function loadInbox() {
 
     const rows = (data ?? []) as any[];
 
-    // Group by trade_id and keep only 1 item (latest) per trade_id
+    // Group by trade_id
     const byTrade = new globalThis.Map<string, any[]>();
-for (const r of rows) {
-  if (!r.trade_id) continue;
-  const arr = byTrade.get(r.trade_id) ?? [];
-  arr.push(r);
-  byTrade.set(r.trade_id, arr);
-}
+    for (const r of rows) {
+      if (!r.trade_id) continue;
+      const arr = byTrade.get(r.trade_id) ?? [];
+      arr.push(r);
+      byTrade.set(r.trade_id, arr);
+    }
 
-const grouped = Array.from(byTrade.entries()).map(([trade_id, msgs]: [string, any[]]) => {
-  // newest first
-  msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const grouped = Array.from(byTrade.entries()).map(([trade_id, msgs]) => {
+      // newest first
+      msgs.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
-  const latest = msgs[0];
+      const latest = msgs[0];
 
-  // NEW if any message TO me is unread
-  const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
+      // NEW if any message TO me is unread
+      const hasUnread = msgs.some((m) => m.to_user_id === me && !m.read_at);
 
-  // Find the "other person" email (someone who is NOT me)
-  // Prefer the newest message where from_user_id !== me
-  const otherMsg =
-    msgs.find((m) => m.from_user_id && m.from_user_id !== me && m.from_email) ??
-    msgs.find((m) => m.to_user_id && m.to_user_id !== me && m.from_email);
+      // Pick any message that involves the other user
+      const otherMsg =
+        msgs.find((m) => m.from_user_id && m.from_user_id !== me) ??
+        msgs.find((m) => m.to_user_id && m.to_user_id !== me) ??
+        latest;
 
-  const otherEmail = otherMsg?.from_email ?? "user";
+      // Determine the "other" username if present
+      const otherUsername =
+        otherMsg?.from_user_id && otherMsg.from_user_id !== me
+          ? otherMsg?.from_profile?.username
+          : otherMsg?.to_profile?.username;
 
-  return {
-    ...latest,
-    trade_id,
-    __hasUnread: hasUnread,
-    __otherEmail: otherEmail,
-  };
-});
+      // Fallback email
+      const otherEmail = otherMsg?.from_email ?? "user";
 
-// Sort threads by latest message time
-grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const otherLabel = otherUsername ? `@${otherUsername}` : otherEmail;
 
-// IMPORTANT: remove any threads where the "otherEmail" is actually me (prevents self rows)
-const filtered = grouped.filter((m: any) => {
-  const other = (m as any).__otherEmail;
-  return other && other !== sessionEmail;
-});
+      return {
+        ...latest,
+        trade_id,
+        __hasUnread: hasUnread,
+        __otherEmail: otherEmail,
+        __otherLabel: otherLabel,
+      };
+    });
 
-setInbox(filtered as any[]);
+    // Sort threads by latest message time
+    grouped.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
+    // Remove any threads where the "other" is actually me
+    const filtered = grouped.filter((m: any) => {
+      const other = (m as any).__otherEmail;
+      return other && other !== sessionEmail;
+    });
+
+    setInbox(filtered as any[]);
   } catch (e: any) {
     setInboxError(e?.message ?? "unknown error");
     setInbox([]);
@@ -716,6 +732,7 @@ setInbox(filtered as any[]);
     setInboxLoading(false);
   }
 }
+
 
 
   
@@ -731,7 +748,7 @@ async function loadThread(tradeId: string) {
 
     const { data, error } = await supabase
       .from("messages")
-      .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
+      .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at, from_profile:profiles!messages_from_user_id_fkey(username)")
       .eq("trade_id", tradeId)
       .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
       .order("created_at", { ascending: true });
@@ -756,7 +773,8 @@ async function loadTrades() {
   try {
     const { data, error } = await supabase
   .from("trades")
-  .select("id, created_at, type, category, title, lng, lat, user_id, status")
+.select("id, created_at, type, category, title, lng, lat, user_id, status, profiles:profiles(username)")
+
   .not("lng", "is", null)
   .not("lat", "is", null)
   .order("created_at", { ascending: false })
@@ -779,8 +797,9 @@ async function loadTrades() {
     lng: Number(row.lng),
     lat: Number(row.lat),
     user_id: row.user_id ?? null,
+    username: row?.profiles?.username ?? null,
+
     status: row.status ?? "active",
-    username: row.profiles?.username ?? null,
   }))
   .filter((t) => isValidCoord(t.lng, t.lat));
 
@@ -1677,7 +1696,7 @@ setTimeout(() => setStatus(""), 1200);
 >
 
       {inbox.slice(0, inboxLimit).map((m) => {
-  const otherEmail = (m as any).__otherEmail ?? m.from_email ?? "user";
+  const otherLabel = (m as any).__otherLabel ?? (m as any).__otherEmail ?? m.from_email ?? "user";
   const hasUnread = !!(m as any).__hasUnread;
 
   return (
@@ -1738,10 +1757,10 @@ setTimeout(() => setStatus(""), 1200);
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
           }}
-          title={`${hasUnread ? "NEW message from " : "Message from "}${otherEmail}`}
+          title={`${hasUnread ? "NEW message from " : "Message from "}${otherLabel}`}
         >
           {hasUnread ? "NEW message from " : "Message from "}
-          {otherEmail}
+          {otherLabel}
         </div>
 
         <div
@@ -2519,9 +2538,14 @@ opacity: sessionEmail ? 1 : 0.6,
                 }}
               >
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {m.from_email ? `From: ${m.from_email} • ` : ""}
-                  {new Date(m.created_at).toLocaleString()}
-                </div>
+  {`From: ${
+    (m as any).from_profile?.username
+      ? `@${(m as any).from_profile.username}`
+      : (m.from_email ?? "Unknown")
+  } • `}
+  {new Date(m.created_at).toLocaleString()}
+</div>
+
 
                 <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, whiteSpace: "pre-wrap" }}>
                   {m.body}
