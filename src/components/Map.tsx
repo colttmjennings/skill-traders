@@ -1124,9 +1124,13 @@ async function doAuth(mode: "login" | "signup") {
 async function logout() {
   await supabase.auth.signOut();
   setSessionEmail(null);
+  setSessionUserId(null);
   setAuthOpen(false);
   setAuthSent(false);
+  setInbox([]);
+  setThreadMsgs([]);
 }
+
 
 async function sendMessage() {
   // Require login only when sending
