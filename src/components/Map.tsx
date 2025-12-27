@@ -139,33 +139,31 @@ export default function Map({
 }: {
   mode?: string | null;
   login?: string | null;
-}) {
 
+  }) {
+  const [isMobile, setIsMobile] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-const [isMobile, setIsMobile] = useState(false);
-const [panelCollapsed, setPanelCollapsed] = useState(false);
+    const mq = window.matchMedia("(max-width: 900px)");
+    const apply = () => setIsMobile(mq.matches);
 
+    apply();
 
-useEffect(() => {
-  if (typeof window === "undefined") return;
+    if ("addEventListener" in mq) {
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    } else {
+      // Safari fallback
+      // @ts-ignore
+      mq.addListener(apply);
+      // @ts-ignore
+      return () => mq.removeListener(apply);
+    }
+  }, []);
 
-  const mq = window.matchMedia("(max-width: 900px)");
-  const apply = () => setIsMobile(mq.matches);
-
-  apply();
-
-  if ("addEventListener" in mq) {
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  } else {
-    // Safari fallback
-    // @ts-ignore
-    mq.addListener(apply);
-    // @ts-ignore
-    return () => mq.removeListener(apply);
-  }
-}, []);
 
 
 
