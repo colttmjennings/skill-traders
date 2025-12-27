@@ -3,7 +3,7 @@
 import Map from "@/components/Map";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { ensureSupabaseHealthy } from "@/lib/supabaseGuard";
+// (we will add supabaseGuard back in Step 3)
 
 
 
