@@ -1,7 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import MapClient from "./MapClient";
+
+const MapClient = dynamic(() => import("./MapClient"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: 16, color: "white" }}>Loading…</div>
+  ),
+});
 
 export default function MapRoutePage() {
   return (
