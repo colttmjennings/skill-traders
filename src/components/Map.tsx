@@ -196,7 +196,6 @@ const [panelView, setPanelView] = useState<"main" | "profile">("main");
 type ProfileRow = {
   id: string;
   username: string | null;
-  display_name: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
@@ -223,7 +222,7 @@ async function loadMyProfile() {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, first_name, last_name, avatar_url, skills, bio")
+      .select("id, username, first_name, last_name, avatar_url, skills, bio")
       .eq("id", sessionUserId)
       .single();
 
@@ -235,7 +234,6 @@ async function loadMyProfile() {
     const row = data as unknown as ProfileRow;
 
     setPUsername(row.username ?? "");
-    setPDisplayName(row.display_name ?? "");
     setPFirstName(row.first_name ?? "");
     setPLastName(row.last_name ?? "");
     setPBio(row.bio ?? "");
@@ -258,7 +256,6 @@ async function saveMyProfile() {
   try {
     const { error } = await supabase.from("profiles").update({
       username: pUsername.trim() || null,
-      display_name: pDisplayName.trim() || null,
       first_name: pFirstName.trim() || null,
       last_name: pLastName.trim() || null,
       bio: pBio.trim() || null,
