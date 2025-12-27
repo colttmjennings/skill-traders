@@ -3,8 +3,6 @@
 import Map from "@/components/Map";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-// (we will add supabaseGuard back in Step 3)
-
 
 
 export default function MapPage({
