@@ -18,10 +18,6 @@ export default function MapPage({
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
 
   useEffect(() => {
-    ensureSupabaseHealthy({ timeoutMs: 3000 });
-  }, []);
-
-  useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
 
       setSessionEmail(data.session?.user?.email ?? null);
