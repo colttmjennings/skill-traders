@@ -142,6 +142,23 @@ function isUnder18(birthdate: string) {
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
   return age < 18;
 }
+async function uploadAvatar(file: File, userId: string) {
+  const ext = file.name.split(".").pop();
+  const path = `${userId}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+}
+
 
 export default function Map({
   mode,
@@ -223,6 +240,7 @@ const [pFirstName, setPFirstName] = useState("");
 const [pLastName, setPLastName] = useState("");
 const [pBirthdate, setPBirthdate] = useState("");
 const [pBio, setPBio] = useState("");
+const [pAvatarUrl, setPAvatarUrl] = useState<string | null>(null);
 const [pSkillsText, setPSkillsText] = useState(""); // comma-separated
 
 async function loadMyProfile() {
@@ -249,6 +267,7 @@ async function loadMyProfile() {
     setPLastName(row.last_name ?? "");
     setPBirthdate(row.birthdate ?? "");
     setPBio(row.bio ?? "");
+    setPAvatarUrl(row.avatar_url ?? null);
     setPSkillsText((row.skills ?? []).join(", "));
   } finally {
     setProfileLoading(false);
@@ -272,6 +291,7 @@ async function saveMyProfile() {
       last_name: pLastName.trim() || null,
       birthdate: pBirthdate || null,
       bio: pBio.trim() || null,
+      avatar_url: pAvatarUrl,
       skills,
     }).eq("id", sessionUserId);
 
@@ -1458,6 +1478,52 @@ setTimeout(() => setStatus(""), 1200);
         {profileError ? (
           <div style={{ fontSize: 13, opacity: 0.9 }}>Error: {profileError}</div>
         ) : null}
+<div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+  <div
+    style={{
+      width: 64,
+      height: 64,
+      borderRadius: "50%",
+      background: "#0b1220",
+      border: "1px solid rgba(255,255,255,0.12)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    }}
+  >
+    {pAvatarUrl ? (
+      <img src={pAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    ) : (
+      <span style={{ opacity: 0.6, fontSize: 12 }}>No photo</span>
+    )}
+  </div>
+
+  <label
+    style={{
+      fontSize: 13,
+      opacity: 0.85,
+      cursor: "pointer",
+      textDecoration: "underline",
+    }}
+  >
+    Change photo
+    <input
+      type="file"
+      accept="image/*"
+      style={{ display: "none" }}
+      onChange={async (e) => {
+        if (!e.target.files?.[0] || !sessionUserId) return;
+        try {
+          const url = await uploadAvatar(e.target.files[0], sessionUserId);
+          setPAvatarUrl(url);
+        } catch (err: any) {
+          alert(err.message ?? "Avatar upload failed");
+        }
+      }}
+    />
+  </label>
+</div>
 
         <label style={{ fontSize: 13, opacity: 0.85 }}>Username (public)</label>
         <input value={pUsername} onChange={(e) => setPUsername(e.target.value)} placeholder="e.g. coltt" style={S.input} />
