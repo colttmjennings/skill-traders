@@ -223,6 +223,8 @@ useEffect(() => {
 const [messageOpen, setMessageOpen] = useState(false);
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile">("main");
@@ -1294,26 +1296,210 @@ setTimeout(() => setStatus(""), 1200);
       </div>
 
       {/* RIGHT PANEL */}
-      <div
-        style={{
-          width: isMobile ? "100%" : (panelCollapsed ? "calc(100% - 96px)" : 360),
-          borderLeft: isMobile ? "none" : `1px solid ${UI.panelBorder}`,
-          background: UI.panelBg,
-          color: UI.text,
-          fontFamily: "system-ui",
-          display: "flex",
-          flexDirection: "column",
-          padding: isMobile ? 10 : 14,
-          gap: 12,
-          overflow: "auto",
-          fontSize: 15,
-          height: isMobile ? (panelCollapsed ? "calc(100vh - 64px)" : "55vh") : "100%",
-borderTop: isMobile ? `1px solid ${UI.panelBorder}` : undefined,
+<div
+  style={{
+    width: isMobile ? "100%" : (panelCollapsed ? "calc(100% - 96px)" : 360),
+    borderLeft: isMobile ? "none" : `1px solid ${UI.panelBorder}`,
+    background: UI.panelBg,
+    color: UI.text,
+    fontFamily: "system-ui",
+    display: "flex",
+    flexDirection: "column",
+    padding: isMobile ? 10 : 14,
+    gap: 12,
+    overflow: "auto",
+    fontSize: 15,
+    height: isMobile ? (panelCollapsed ? "calc(100vh - 64px)" : "55vh") : "100%",
+    borderTop: isMobile ? `1px solid ${UI.panelBorder}` : undefined,
+    fontWeight: 500,
+    lineHeight: 1.45,
+  }}
+>
+<div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
 
-fontWeight: 500,
-lineHeight: 1.45,
+  <button
+    onClick={() => setPanelView("main")}
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: panelView === "main" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)",
+      color: "white",
+      fontWeight: 900,
+      cursor: "pointer",
+      fontSize: 13,
+    }}
+  >
+    Map Tools
+  </button>
+
+  <button
+    onClick={() => {
+      if (!sessionEmail) {
+        setAuthOpen(true);
+        setAuthSent(false);
+        return;
+      }
+      setPanelView("profile");
+    }}
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: panelView === "profile" ? "rgba(27,191,138,0.25)" : "rgba(255,255,255,0.05)",
+      color: "white",
+      fontWeight: 900,
+      cursor: "pointer",
+      fontSize: 13,
+    }}
+  >
+    Profile
+  </button>
+</div>
+
+{panelView === "profile" ? (
+  <div
+    style={{
+      padding: 12,
+      borderRadius: 14,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(255,255,255,0.04)",
+      marginBottom: 12,
+    }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ fontWeight: 900 }}>Your Profile</div>
+      <button
+        onClick={() => setPanelView("main")}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          color: "white",
+          fontWeight: 900,
+          cursor: "pointer",
+          fontSize: 12,
         }}
       >
+        Close
+      </button>
+    </div>
+{/* Profile Preview (READ) */}
+<div
+  style={{
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.03)",
+  }}
+>
+  <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 6, opacity: 0.95 }}>
+    Preview
+  </div>
+
+  <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.4 }}>
+    <div>
+      <span style={{ opacity: 0.75 }}>Username:</span>{" "}
+      <span style={{ fontWeight: 800 }}>
+        {pUsername?.trim() ? `@${pUsername.trim()}` : "—"}
+      </span>
+    </div>
+
+    <div>
+      <span style={{ opacity: 0.75 }}>Display:</span>{" "}
+      <span style={{ fontWeight: 800 }}>
+        {pDisplayName?.trim() ? pDisplayName.trim() : "—"}
+      </span>
+    </div>
+
+    <div style={{ marginTop: 6 }}>
+      <span style={{ opacity: 0.75 }}>Bio:</span>{" "}
+      <span style={{ fontWeight: 700 }}>
+        {pBio?.trim() ? pBio.trim() : "—"}
+      </span>
+    </div>
+
+    <div style={{ marginTop: 6 }}>
+      <span style={{ opacity: 0.75 }}>Skills:</span>{" "}
+      <span style={{ fontWeight: 800 }}>
+        {pSkillsText?.trim() ? pSkillsText.trim() : "—"}
+      </span>
+    </div>
+  </div>
+</div>
+    {!sessionEmail ? (
+      <div style={{ marginTop: 10, opacity: 0.85, fontSize: 13 }}>
+        Log in to edit your profile.
+      </div>
+    ) : profileLoading ? (
+      <div style={{ marginTop: 10, opacity: 0.85, fontSize: 13 }}>Loading…</div>
+    ) : (
+      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        {profileError ? (
+          <div style={{ fontSize: 13, opacity: 0.9 }}>Error: {profileError}</div>
+        ) : null}
+
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Username (public)</label>
+        <input value={pUsername} onChange={(e) => setPUsername(e.target.value)} placeholder="e.g. coltt" style={S.input} />
+
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Display name (public)</label>
+        <input value={pDisplayName} onChange={(e) => setPDisplayName(e.target.value)} placeholder="e.g. Coltt" style={S.input} />
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 13, opacity: 0.85 }}>First name</label>
+            <input value={pFirstName} onChange={(e) => setPFirstName(e.target.value)} style={S.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 13, opacity: 0.85 }}>Last name</label>
+            <input value={pLastName} onChange={(e) => setPLastName(e.target.value)} style={S.input} />
+          </div>
+        </div>
+
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Skills (comma separated)</label>
+        <input value={pSkillsText} onChange={(e) => setPSkillsText(e.target.value)} placeholder="Mechanic, Tattoo Artist, Knitting" style={S.input} />
+
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Bio</label>
+        <textarea
+          value={pBio}
+          onChange={(e) => setPBio(e.target.value)}
+          rows={5}
+          style={{
+            width: "100%",
+            padding: 11,
+            borderRadius: 12,
+            background: UI.inputBg,
+            color: UI.text,
+            border: `1px solid ${UI.inputBorder}`,
+            fontSize: 14,
+            fontWeight: 600,
+            outline: "none",
+            resize: "vertical",
+          }}
+        />
+
+        <button
+          onClick={saveMyProfile}
+          disabled={profileSaving}
+          style={{
+  ...S.buttonPrimary,
+  opacity: profileSaving ? 0.7 : 1,
+  cursor: profileSaving ? "not-allowed" : "pointer",
+}}
+
+        >
+          {profileSaving ? "Saving..." : "Save Profile"}
+        </button>
+      </div>
+    )}
+  </div>
+) : null}
+
+        
         {isMobile && (
   <div
     style={{
@@ -1325,6 +1511,9 @@ lineHeight: 1.45,
     }}
   />
 )}
+{panelView === "main" && (
+  <>
+
 
 {/* Inbox (MVP) */}
 <div
@@ -1996,9 +2185,15 @@ opacity: sessionEmail ? 1 : 0.6,
           {filteredTrades.length === 0 && (
             <div style={{ fontSize: 12, opacity: 0.7 }}>No matches.</div>
           )}
-        </div>
+                </div>
+
+    </>
+)}
 
       </div>
+
+
+
             {/* MESSAGE MODAL (MVP) */}
       {messageOpen && (
   <div

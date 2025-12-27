@@ -12,14 +12,51 @@ export default function MapPage({
   login?: string | null;
 }) {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+
       setSessionEmail(data.session?.user?.email ?? null);
+      const userId = data.session?.user?.id ?? null;
+
+if (userId) {
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username, display_name")
+    .eq("id", userId)
+    .single();
+
+  const u = prof?.username ? `@${prof.username}` : null;
+  const d = prof?.display_name ?? null;
+  setSessionLabel(u || d || data.session?.user?.email || null);
+} else {
+  setSessionLabel(data.session?.user?.email ?? null);
+}
+
+      
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+
       setSessionEmail(session?.user?.email ?? null);
+      const userId = session?.user?.id ?? null;
+
+if (userId) {
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username, display_name")
+    .eq("id", userId)
+    .single();
+
+  const u = prof?.username ? `@${prof.username}` : null;
+  const d = prof?.display_name ?? null;
+  setSessionLabel(u || d || session?.user?.email || null);
+} else {
+  setSessionLabel(session?.user?.email ?? null);
+}
+
     });
 
     return () => {
@@ -110,7 +147,8 @@ export default function MapPage({
   <div style={{ fontSize: 13, opacity: 0.9, textAlign: "left" }}>
     <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 800 }}>Signed in</div>
     <div style={{ fontSize: 13, fontWeight: 900, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-      {sessionEmail}
+      {sessionLabel ?? sessionEmail}
+
     </div>
   </div>
 </button>
