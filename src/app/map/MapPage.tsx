@@ -79,10 +79,42 @@ export default function MapPage({
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {sessionEmail ? (
             <>
-              <div style={{ fontSize: 13, opacity: 0.9 }}>
-                <span style={{ opacity: 0.8 }}>Signed in:</span>{" "}
-                <span style={{ fontWeight: 800 }}>{sessionEmail}</span>
-              </div>
+              <button
+  onClick={() => {
+    // Tell Map.tsx to switch the right panel to Profile view
+    window.dispatchEvent(new Event("skilltraders:open-profile"));
+  }}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    cursor: "pointer",
+  }}
+  title="Open profile"
+>
+  <div
+    style={{
+      width: 26,
+      height: 26,
+      borderRadius: 999,
+      background: "rgba(255,255,255,0.14)",
+      border: "1px solid rgba(255,255,255,0.18)",
+      flexShrink: 0,
+    }}
+  />
+  <div style={{ fontSize: 13, opacity: 0.9, textAlign: "left" }}>
+    <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 800 }}>Signed in</div>
+    <div style={{ fontSize: 13, fontWeight: 900, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {sessionEmail}
+    </div>
+  </div>
+</button>
+
 
               <button
                 onClick={logout}

@@ -224,6 +224,106 @@ const [messageOpen, setMessageOpen] = useState(false);
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+// Right panel mode 
+const [panelView, setPanelView] = useState<"main" | "profile">("main");
+/* Profile state + load/save logic */
+type ProfileRow = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  skills: string[] | null;
+  bio: string | null;
+};
+
+const [profileLoading, setProfileLoading] = useState(false);
+const [profileSaving, setProfileSaving] = useState(false);
+const [profileError, setProfileError] = useState<string>("");
+
+const [pUsername, setPUsername] = useState("");
+const [pDisplayName, setPDisplayName] = useState("");
+const [pFirstName, setPFirstName] = useState("");
+const [pLastName, setPLastName] = useState("");
+const [pBio, setPBio] = useState("");
+const [pSkillsText, setPSkillsText] = useState(""); // comma-separated
+
+async function loadMyProfile() {
+  if (!sessionUserId) return;
+
+  setProfileLoading(true);
+  setProfileError("");
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, first_name, last_name, avatar_url, skills, bio")
+      .eq("id", sessionUserId)
+      .single();
+
+    if (error) {
+      setProfileError(error.message);
+      return;
+    }
+
+    const row = data as unknown as ProfileRow;
+
+    setPUsername(row.username ?? "");
+    setPDisplayName(row.display_name ?? "");
+    setPFirstName(row.first_name ?? "");
+    setPLastName(row.last_name ?? "");
+    setPBio(row.bio ?? "");
+    setPSkillsText((row.skills ?? []).join(", "));
+  } finally {
+    setProfileLoading(false);
+  }
+}
+
+async function saveMyProfile() {
+  if (!sessionUserId) return;
+
+  const skills = pSkillsText
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  setProfileSaving(true);
+  setProfileError("");
+  try {
+    const { error } = await supabase.from("profiles").update({
+      username: pUsername.trim() || null,
+      display_name: pDisplayName.trim() || null,
+      first_name: pFirstName.trim() || null,
+      last_name: pLastName.trim() || null,
+      bio: pBio.trim() || null,
+      skills,
+    }).eq("id", sessionUserId);
+
+    if (error) {
+      setProfileError(error.message);
+      return;
+    }
+  } finally {
+    setProfileSaving(false);
+  }
+}
+
+// When we enter Profile view (and logged in), load profile
+useEffect(() => {
+  if (panelView !== "profile") return;
+  if (!sessionUserId) return;
+  loadMyProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [panelView, sessionUserId]);
+
+
+// Listen for top-bar click (MapPage.tsx dispatches this)
+useEffect(() => {
+  const handler = () => setPanelView("profile");
+  window.addEventListener("skilltraders:open-profile", handler as any);
+  return () => window.removeEventListener("skilltraders:open-profile", handler as any);
+}, []);
+
 const [authOpen, setAuthOpen] = useState(false);
 useEffect(() => {
   if (typeof window === "undefined") return;
