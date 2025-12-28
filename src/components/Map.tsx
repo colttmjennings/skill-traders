@@ -774,9 +774,12 @@ async function fetchUsernamesForIds(ids: string[]) {
 // 2.5) Load inbox (one row per thread)
 async function loadInbox() {
   if (!sessionEmail) {
-    setInbox([]);
-    return;
-  }
+  setInbox([]);
+  setInboxError("");
+  setInboxLoading(false);
+  return;
+}
+
 
   setInboxLoading(true);
   setInboxError("");
@@ -1476,13 +1479,34 @@ async function doAuth(mode: "login" | "signup") {
 
 async function logout() {
   await supabase.auth.signOut();
+
+  // Auth
   setSessionEmail(null);
   setSessionUserId(null);
   setAuthOpen(false);
   setAuthSent(false);
+
+  // Inbox / messaging
   setInbox([]);
+  setInboxError("");
+  setInboxLoading(false);
+  setActiveThreadTradeId(null);
   setThreadMsgs([]);
+  setInboxOpen(false);
+
+  // Modals / UI
+  setMessageOpen(false);
+
+  // Trades / reviews
+  setSelectedTradeId(null);
+  setCompletedTrade(null);
+  setCanReview(false);
+  setRevieweeUserId(null);
+
+  // Optional safety
+  setStatus("");
 }
+
 
 
 async function sendMessage() {
