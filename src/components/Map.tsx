@@ -2313,11 +2313,25 @@ setTimeout(() => setStatus(""), 1200);
 
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: selectedTrade.user_id === sessionUserId ? 8 : 0 }}>
 
-{selectedTrade?.username ? (
-  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
-    Posted by <span style={{ fontWeight: 900 }}>@{selectedTrade.username}</span>
+{selectedTrade?.username && (
+  <div
+    style={{
+      opacity: 0.85,
+      fontSize: 13,
+      cursor: "pointer",
+      textDecoration: "underline",
+      marginTop: 6,
+    }}
+    onClick={async () => {
+      if (!selectedTrade.user_id) return;
+      await loadPublicProfile(selectedTrade.user_id);
+      setPanelView("publicProfile");
+    }}
+  >
+    Posted by @{selectedTrade.username}
   </div>
-) : null}
+)}
+
 
   <button
     onClick={() => {
