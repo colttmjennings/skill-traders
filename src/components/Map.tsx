@@ -967,6 +967,10 @@ el.innerHTML = `
     </div>
 
     <div style="opacity:.9; font-size:13px; margin-bottom:10px;">
+    <div style="font-size:13px; margin-bottom:10px; opacity:.85;">
+  Posted by <b>@${escapeHtml(t.username ?? "user")}</b>
+</div>
+
       ${escapeHtml(t.type)} • ${escapeHtml(t.category ?? "Other")}
     </div>
 
