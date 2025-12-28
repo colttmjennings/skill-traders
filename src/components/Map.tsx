@@ -2611,7 +2611,7 @@ opacity: sessionEmail ? 1 : 0.6,
     marginBottom: 10,
   }}
 >
-  You: @{pUsername || "user"}
+  You: @{pUsername ? pUsername : "loading…"}
 </div>
 
 
