@@ -215,6 +215,7 @@ export default function Map({
   // messaging (MVP)
 const [messageOpen, setMessageOpen] = useState(false);
 const [reviewOpen, setReviewOpen] = useState(false);
+const [revieweeSkills, setRevieweeSkills] = useState<string[]>([]);
 const [reviewRating, setReviewRating] = useState(5);
 const [reviewComment, setReviewComment] = useState("");
 const [reviewSkill, setReviewSkill] = useState("");
@@ -320,14 +321,18 @@ type CompletedTradeRow = {
   completed_by_user_id: string;
   completed_at: string | null;
   status: string | null;
-    thread_message_count: number | null;
-  reviews_enabled: boolean | null;
 
+  // review gate columns (from completed_trades)
+  thread_message_count: number | null;
+  reviews_enabled: boolean | null;
 };
+
 
 const [completedTrade, setCompletedTrade] = useState<CompletedTradeRow | null>(null);
 const [revieweeUserId, setRevieweeUserId] = useState<string | null>(null);
 const [canReview, setCanReview] = useState(false);
+const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+
 useEffect(() => {
   // Default off
   setCanReview(false);
@@ -349,7 +354,9 @@ useEffect(() => {
   // Only allow when status looks completed
   const status = (completedTrade.status ?? "").toLowerCase();
   if (status && status !== "completed") return;
-
+  // Must be gate-enabled (prevents “review” from showing when enabled=false)
+  
+  if (!completedTrade.reviews_enabled) return;
   setRevieweeUserId(other);
   setCanReview(true);
 }, [completedTrade, sessionUserId]);
@@ -632,6 +639,7 @@ async function submitReview() {
 });
 
 
+
     if (error) {
       alert(error.message);
       return;
@@ -642,6 +650,15 @@ async function submitReview() {
     setReviewComment("");
     setReviewRating(5);
     setCanReview(false);
+        // Mark as already reviewed (prevents re-showing button)
+    setAlreadyReviewed(true);
+
+    // Close the conversation thread so it disappears
+    setInboxOpen(false);
+    setActiveThreadTradeId(null);
+
+    // Refresh inbox list
+    await loadInbox();
   } finally {
     setReviewSending(false);
   }
@@ -1058,6 +1075,28 @@ async function loadCompletedTrade(tradeId: string) {
   }
 
   setCompletedTrade((data as any) ?? null);
+ // Check if *I* already reviewed this trade (prevents duplicates)
+// reviews.trade_id is UUID; only query when tradeId looks like a UUID
+const tradeUuidOk =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    tradeId
+  );
+
+if (!tradeUuidOk) {
+  setAlreadyReviewed(false);
+} else {
+  const { data: existing, error: reviewErr } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("trade_id", tradeId)
+    .eq("reviewer_user_id", sessionUserId ?? "")
+    .maybeSingle();
+
+  if (reviewErr) console.warn("reviews lookup failed:", reviewErr.message);
+  setAlreadyReviewed(!!existing);
+}
+
+
 }
 
 
@@ -2355,12 +2394,42 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
     </div>
   );
 })}
-{/* Review button (only when this trade is completed and you are a participant) */}
-{canReview && revieweeUserId && (
+{canReview && revieweeUserId && !alreadyReviewed && (
+
   <button
-    onClick={() => {
+    onClick={async () => {
+  try {
+    setRevieweeSkills([]); // reset each time
+    if (!revieweeUserId) {
       setReviewOpen(true);
-    }}
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("skills")
+      .eq("id", revieweeUserId)
+      .maybeSingle();
+
+    if (error) console.warn("load reviewee skills error:", error);
+
+    // Accept either a string[] or a comma-separated string (defensive)
+    const raw = (data as any)?.skills;
+    const list: string[] = Array.isArray(raw)
+      ? raw
+      : typeof raw === "string"
+      ? raw
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    setRevieweeSkills(list);
+  } finally {
+    setReviewOpen(true);
+  }
+}}
+
     style={{
       width: "100%",
       marginTop: 10,
@@ -3103,48 +3172,61 @@ await loadTrades();
 
       <div style={{ marginTop: 12 }}>
         <label style={{ fontSize: 13, opacity: 0.85 }}>Overall rating (1–5)</label>
-        <input
-          type="number"
-          min={1}
-          max={5}
-          value={reviewRating}
-          onChange={(e) =>
-            setReviewRating(Math.max(1, Math.min(5, Number(e.target.value))))
-          }
-          style={{
-            width: "100%",
-            padding: 11,
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.06)",
-            color: "rgba(255,255,255,0.92)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            fontSize: 14,
-            fontWeight: 700,
-            outline: "none",
-            marginTop: 6,
-          }}
-        />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+  {[1, 2, 3, 4, 5].map((n) => (
+    <button
+      key={n}
+      onClick={() => setReviewRating(n)}
+      style={{
+        flex: 1,
+        padding: "10px 0",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background:
+          reviewRating === n
+            ? "rgba(16,185,129,0.25)"
+            : "rgba(255,255,255,0.08)",
+        color: "white",
+        fontWeight: 900,
+        fontSize: 14,
+        cursor: "pointer",
+      }}
+    >
+      {n}
+    </button>
+  ))}
+</div>
+
       </div>
 
       <div style={{ marginTop: 12 }}>
         <label style={{ fontSize: 13, opacity: 0.85 }}>Skill (example: Plumbing)</label>
-        <input
-          value={reviewSkill}
-          onChange={(e) => setReviewSkill(e.target.value)}
-          placeholder="Enter one skill to rate"
-          style={{
-            width: "100%",
-            padding: 11,
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.06)",
-            color: "rgba(255,255,255,0.92)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            fontSize: 14,
-            fontWeight: 600,
-            outline: "none",
-            marginTop: 6,
-          }}
-        />
+        <select
+  value={reviewSkill}
+  onChange={(e) => setReviewSkill(e.target.value)}
+  style={{
+    width: "100%",
+    padding: 11,
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    fontSize: 14,
+    fontWeight: 700,
+    outline: "none",
+  }}
+>
+  <option value="" disabled>
+    Select a skill…
+  </option>
+
+  {(revieweeSkills?.length ? revieweeSkills : ["General"]).map((s) => (
+    <option key={s} value={s}>
+      {s}
+    </option>
+  ))}
+</select>
+
       </div>
 
       <div style={{ marginTop: 12 }}>
