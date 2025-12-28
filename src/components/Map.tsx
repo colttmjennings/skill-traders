@@ -219,7 +219,8 @@ const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
 // Right panel mode 
-const [panelView, setPanelView] = useState<"main" | "profile">("main");
+const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
+
 /* Profile state + load/save logic */
 type ProfileRow = {
   id: string;
@@ -231,6 +232,8 @@ type ProfileRow = {
   skills: string[] | null;
   bio: string | null;
 };
+const [publicProfile, setPublicProfile] = useState<ProfileRow | null>(null);
+const [publicSkills, setPublicSkills] = useState<string[]>([]);
 
 const [profileLoading, setProfileLoading] = useState(false);
 const [profileSaving, setProfileSaving] = useState(false);
@@ -274,6 +277,22 @@ async function loadMyProfile() {
     setProfileLoading(false);
   }
 }
+async function loadPublicProfile(userId: string) {
+  setPublicProfile(null);
+  setPublicSkills([]);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, bio, avatar_url, skills")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) return;
+
+  setPublicProfile(data as ProfileRow);
+  setPublicSkills((data.skills ?? []) as string[]);
+}
+
 
 async function saveMyProfile() {
   if (!sessionUserId) return;
@@ -998,8 +1017,13 @@ popup.on("open", () => {
   const btn = document.getElementById(`msg-btn-${t.id}`);
   if (!btn) return;
 
-  btn.onclick = () => {
+  btn.onclick = async () => {
   setSelectedTradeId(t.id);
+
+  if (t.user_id) {
+    await loadPublicProfile(t.user_id);
+    setPanelView("publicProfile");
+  }
 
   if (!sessionEmail) {
     setAuthOpen(true);
@@ -1009,6 +1033,7 @@ popup.on("open", () => {
 
   setMessageOpen(true);
 };
+
 
 });
 
@@ -1692,7 +1717,96 @@ setTimeout(() => setStatus(""), 1200);
   </div>
 ) : null}
 
-        
+        {panelView === "publicProfile" && publicProfile && (
+  <div
+    style={{
+      padding: 12,
+      borderRadius: 14,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(255,255,255,0.04)",
+      marginBottom: 12,
+    }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ fontWeight: 900, fontSize: 15 }}>
+        @{publicProfile.username}
+      </div>
+
+      <button
+        onClick={() => setPanelView("main")}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          color: "white",
+          fontWeight: 900,
+          cursor: "pointer",
+          fontSize: 12,
+        }}
+      >
+        Close
+      </button>
+    </div>
+
+    {publicProfile.avatar_url && (
+      <img
+        src={publicProfile.avatar_url}
+        alt="avatar"
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          objectFit: "cover",
+          marginTop: 10,
+          border: "1px solid rgba(255,255,255,0.18)",
+        }}
+      />
+    )}
+
+    <div style={{ marginTop: 10, fontSize: 13, opacity: 0.9 }}>
+      {publicProfile.bio || "—"}
+    </div>
+
+    <div style={{ marginTop: 12 }}>
+      <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>
+        Skills
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {publicSkills.map((skill) => (
+          <div
+            key={skill}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.06)",
+              fontSize: 12,
+              fontWeight: 800,
+            }}
+          >
+            <span>{skill}</span>
+            <span
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.18)",
+                opacity: 0.6,
+              }}
+              title="Tier badge (coming soon)"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
         {isMobile && (
   <div
     style={{
