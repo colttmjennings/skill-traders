@@ -1505,12 +1505,57 @@ setTimeout(() => setStatus(""), 1200);
       </span>
     </div>
 
-    <div style={{ marginTop: 6 }}>
-      <span style={{ opacity: 0.75 }}>Skills:</span>{" "}
-      <span style={{ fontWeight: 800 }}>
-        {pSkillsText?.trim() ? pSkillsText.trim() : "—"}
-      </span>
-    </div>
+    <div style={{ marginTop: 8 }}>
+  <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>
+    Skills
+  </div>
+
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    {(pSkillsText
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) || []
+    ).map((skill) => (
+      <div
+        key={skill}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.06)",
+          fontSize: 12,
+          fontWeight: 800,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span>{skill}</span>
+
+        {/* Badge placeholder */}
+        <span
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.18)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 10,
+            fontWeight: 900,
+            opacity: 0.6,
+          }}
+          title="Tier badge (coming soon)"
+        >
+          —
+        </span>
+      </div>
+    ))}
+  </div>
+</div>
+
   </div>
 </div>
     {!sessionEmail ? (
