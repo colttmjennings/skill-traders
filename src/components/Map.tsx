@@ -671,8 +671,9 @@ async function loadInbox() {
     const { data, error } = await supabase
       .from("messages")
       .select(
-        "id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at, from_profile:profiles!messages_from_user_id_fkey(username), to_profile:profiles!messages_to_user_id_fkey(username)"
-      )
+  "id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at"
+)
+
       .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
       .order("created_at", { ascending: false })
       .limit(200);
