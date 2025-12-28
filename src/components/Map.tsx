@@ -2603,25 +2603,17 @@ opacity: sessionEmail ? 1 : 0.6,
         Message {selectedTrade ? `"${selectedTrade.title}"` : ""}
       </div>
 
-      <label style={{ fontSize: 13, opacity: 0.85 }}>Your email</label>
-      <input
-        value={sessionEmail ?? ""}
-        placeholder="you@email.com"
-        disabled={true}
-        style={{
-          width: "100%",
-          padding: 11,
-          borderRadius: 12,
-          background: "rgba(255,255,255,0.06)",
-          color: "rgba(255,255,255,0.92)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          fontSize: 14,
-          fontWeight: 600,
-          outline: "none",
-          marginTop: 6,
-          marginBottom: 10,
-        }}
-      />
+      <div
+  style={{
+    fontSize: 13,
+    opacity: 0.85,
+    fontWeight: 800,
+    marginBottom: 10,
+  }}
+>
+  You: @{pUsername || "user"}
+</div>
+
 
       <label style={{ fontSize: 13, opacity: 0.85 }}>Message</label>
       <textarea
