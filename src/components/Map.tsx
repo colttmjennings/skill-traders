@@ -986,9 +986,18 @@ el.innerHTML = `
     </div>
 
     <div style="opacity:.9; font-size:13px; margin-bottom:10px;">
-    <div style="font-size:13px; margin-bottom:10px; opacity:.85;">
+    <div
+  id="profile-link-${t.id}"
+  style="
+    font-size:13px;
+    margin-bottom:10px;
+    opacity:.85;
+    cursor:pointer;
+  "
+>
   Posted by <b>@${escapeHtml(t.username ?? "user")}</b>
 </div>
+
 
       ${escapeHtml(t.type)} • ${escapeHtml(t.category ?? "Other")}
     </div>
@@ -1015,27 +1024,40 @@ el.innerHTML = `
 // Attach handler when the popup is opened
 popup.on("open", () => {
   const btn = document.getElementById(`msg-btn-${t.id}`);
+  const profileLink = document.getElementById(`profile-link-${t.id}`);
+
+  if (profileLink && t.user_id) {
+  const uid = t.user_id;
+
+  profileLink.onclick = async () => {
+    await loadPublicProfile(uid);
+    setPanelView("publicProfile");
+  };
+}
+
+
   if (!btn) return;
 
   btn.onclick = async () => {
-  setSelectedTradeId(t.id);
+    setSelectedTradeId(t.id);
 
-  if (t.user_id) {
-    await loadPublicProfile(t.user_id);
-    setPanelView("publicProfile");
-  }
-
-  if (!sessionEmail) {
-    setAuthOpen(true);
-    setAuthSent(false);
-    return;
-  }
-
-  setMessageOpen(true);
-};
+    if (t.user_id) {
+  const uid = t.user_id;
+  await loadPublicProfile(uid);
+  setPanelView("publicProfile");
+}
 
 
+    if (!sessionEmail) {
+      setAuthOpen(true);
+      setAuthSent(false);
+      return;
+    }
+
+    setMessageOpen(true);
+  };
 });
+
 
 marker.setLngLat([lng, lat]).setPopup(popup).addTo(map);
 
