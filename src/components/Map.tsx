@@ -320,6 +320,9 @@ type CompletedTradeRow = {
   completed_by_user_id: string;
   completed_at: string | null;
   status: string | null;
+    thread_message_count: number | null;
+  reviews_enabled: boolean | null;
+
 };
 
 const [completedTrade, setCompletedTrade] = useState<CompletedTradeRow | null>(null);
@@ -1044,7 +1047,7 @@ async function updateReviewGate(tradeId: string) {
 async function loadCompletedTrade(tradeId: string) {
   const { data, error } = await supabase
     .from("completed_trades")
-    .select("trade_id, owner_user_id, completed_by_user_id, completed_at, status")
+    .select("trade_id, owner_user_id, completed_by_user_id, completed_at, status, thread_message_count, reviews_enabled")
     .eq("trade_id", tradeId)
     .maybeSingle();
 
@@ -2803,7 +2806,6 @@ await loadCompletedTrade(selectedTrade.id);
         return;
       }
 
-      // 3) Refresh UI
       // 3) Update review gate + refresh completed row
 await updateReviewGate(selectedTrade.id);
 await loadCompletedTrade(selectedTrade.id);
@@ -3318,6 +3320,38 @@ await loadTrades();
     Leave Review
   </button>
 )}
+{/* REVIEW GATE (debug-safe) */}
+<div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+  <div style={{ fontSize: 12, opacity: 0.75 }}>
+    Gate:{" "}
+    {activeThreadTradeId
+      ? `trade=${activeThreadTradeId} | completed=${completedTrade?.trade_id ?? "null"} | enabled=${String(
+          completedTrade?.reviews_enabled
+        )} | count=${completedTrade?.thread_message_count ?? "?"}`
+      : "no active thread"}
+  </div>
+
+  {activeThreadTradeId &&
+    completedTrade?.trade_id === activeThreadTradeId &&
+    completedTrade?.reviews_enabled && (
+      <button
+        onClick={() => setReviewOpen(true)}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(16,185,129,0.18)",
+          color: "white",
+          fontWeight: 900,
+          cursor: "pointer",
+          fontSize: 12,
+          marginLeft: "auto",
+        }}
+      >
+        Leave Review
+      </button>
+    )}
+</div>
 
             <div
   style={{
