@@ -214,12 +214,28 @@ export default function Map({
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
   // messaging (MVP)
 const [messageOpen, setMessageOpen] = useState(false);
+const [reviewOpen, setReviewOpen] = useState(false);
+const [reviewRating, setReviewRating] = useState(5);
+const [reviewComment, setReviewComment] = useState("");
+const [reviewSkill, setReviewSkill] = useState("");
+const [reviewSending, setReviewSending] = useState(false);
+
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
+
+useEffect(() => {
+  if (!selectedTradeId) {
+    setCompletedTrade(null);
+    return;
+  }
+  loadCompletedTrade(selectedTradeId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedTradeId]);
+
 
 /* Profile state + load/save logic */
 type ProfileRow = {
@@ -234,6 +250,45 @@ type ProfileRow = {
 };
 const [publicProfile, setPublicProfile] = useState<ProfileRow | null>(null);
 const [publicSkills, setPublicSkills] = useState<string[]>([]);
+type CompletedTradeRow = {
+  trade_id: string;
+  owner_user_id: string;
+  completed_by_user_id: string;
+  completed_at: string | null;
+  status: string | null;
+};
+
+const [completedTrade, setCompletedTrade] = useState<CompletedTradeRow | null>(null);
+const [revieweeUserId, setRevieweeUserId] = useState<string | null>(null);
+const [canReview, setCanReview] = useState(false);
+useEffect(() => {
+  // Default off
+  setCanReview(false);
+  setRevieweeUserId(null);
+
+  if (!completedTrade) return;
+  if (!sessionUserId) return;
+
+  const owner = completedTrade.owner_user_id;
+  const doer = completedTrade.completed_by_user_id;
+
+  // Only participants can review
+  if (sessionUserId !== owner && sessionUserId !== doer) return;
+
+  // Determine who I'm reviewing (the "other" participant)
+  const other = sessionUserId === owner ? doer : owner;
+  if (!other) return;
+
+  // Only allow when status looks completed
+  const status = (completedTrade.status ?? "").toLowerCase();
+  if (status && status !== "completed") return;
+
+  setRevieweeUserId(other);
+  setCanReview(true);
+}, [completedTrade, sessionUserId]);
+
+
+
 
 const [profileLoading, setProfileLoading] = useState(false);
 const [profileSaving, setProfileSaving] = useState(false);
@@ -482,6 +537,44 @@ async function sendThreadReply() {
     await loadInbox();
   } finally {
     setReplySending(false);
+  }
+}
+
+async function submitReview() {
+  if (!sessionUserId) return;
+  if (!completedTrade) return;
+  if (!revieweeUserId) return;
+  if (!canReview) return;
+
+
+  const rating = Math.max(1, Math.min(5, reviewRating));
+  const skill = reviewSkill.trim();
+  if (!skill) return;
+
+  setReviewSending(true);
+
+  try {
+    const { error } = await supabase.rpc("submit_trade_review", {
+  p_trade_id: completedTrade.trade_id,
+  p_reviewee_user_id: revieweeUserId,
+  p_rating: rating,
+  p_comment: reviewComment || null,
+  p_skill_ratings: [{ skill, rating }],
+});
+
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setReviewOpen(false);
+    setReviewSkill("");
+    setReviewComment("");
+    setReviewRating(5);
+    setCanReview(false);
+  } finally {
+    setReviewSending(false);
   }
 }
 
@@ -867,6 +960,22 @@ async function loadThread(tradeId: string) {
     setThreadLoading(false);
   }
 }
+async function loadCompletedTrade(tradeId: string) {
+  const { data, error } = await supabase
+    .from("completed_trades")
+    .select("trade_id, owner_user_id, completed_by_user_id, completed_at, status")
+    .eq("trade_id", tradeId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("completed_trades lookup failed:", error.message);
+    setCompletedTrade(null);
+    return;
+  }
+
+  setCompletedTrade((data as any) ?? null);
+}
+
 
 // Load trades for map
 async function loadTrades() {
@@ -2465,6 +2574,32 @@ opacity: sessionEmail ? 1 : 0.6,
   >
     Message
   </button>
+  {canReview && revieweeUserId && (
+  <button
+    onClick={() => {
+  setReviewRating(5);
+  setReviewComment("");
+  setReviewSkill("");
+  setReviewOpen(true);
+}}
+
+    style={{
+      width: "100%",
+      marginTop: 8,
+      padding: 11,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.15)",
+      color: "white",
+      fontWeight: 900,
+      fontSize: 14,
+      cursor: "pointer",
+    }}
+  >
+    Leave Review
+  </button>
+)}
+
 {selectedTrade.user_id === sessionUserId && (
 
   <button
@@ -2779,6 +2914,145 @@ opacity: sessionEmail ? 1 : 0.6,
     </div>
   </div>
 )}
+{reviewOpen && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      padding: 14,
+    }}
+    onClick={() => setReviewOpen(false)}
+  >
+    <div
+      style={{
+        width: "min(520px, 100%)",
+        background: "rgba(10,18,28,0.96)",
+        border: "1px solid rgba(255,255,255,0.14)",
+        borderRadius: 16,
+        padding: 14,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 16, fontWeight: 900 }}>Leave a review</div>
+        <button
+          onClick={() => setReviewOpen(false)}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "rgba(255,255,255,0.8)",
+            fontSize: 18,
+            cursor: "pointer",
+            fontWeight: 900,
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+        Rate the user for this completed trade.
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Overall rating (1–5)</label>
+        <input
+          type="number"
+          min={1}
+          max={5}
+          value={reviewRating}
+          onChange={(e) =>
+            setReviewRating(Math.max(1, Math.min(5, Number(e.target.value))))
+          }
+          style={{
+            width: "100%",
+            padding: 11,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.92)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            fontSize: 14,
+            fontWeight: 700,
+            outline: "none",
+            marginTop: 6,
+          }}
+        />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Skill (example: Plumbing)</label>
+        <input
+          value={reviewSkill}
+          onChange={(e) => setReviewSkill(e.target.value)}
+          placeholder="Enter one skill to rate"
+          style={{
+            width: "100%",
+            padding: 11,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.92)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            fontSize: 14,
+            fontWeight: 600,
+            outline: "none",
+            marginTop: 6,
+          }}
+        />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Comment (optional)</label>
+        <textarea
+          value={reviewComment}
+          onChange={(e) => setReviewComment(e.target.value)}
+          placeholder="Quick note (optional)"
+          rows={4}
+          style={{
+            width: "100%",
+            padding: 11,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.92)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            fontSize: 14,
+            fontWeight: 600,
+            outline: "none",
+            marginTop: 6,
+            resize: "vertical",
+          }}
+        />
+      </div>
+
+      <button
+        disabled={reviewSending || !reviewSkill.trim()}
+        onClick={submitReview}
+        style={{
+          width: "100%",
+          marginTop: 12,
+          padding: 12,
+          borderRadius: 12,
+          background: "#1bbf8a",
+          border: "1px solid rgba(255,255,255,0.15)",
+          color: "#06101a",
+          fontWeight: 900,
+          fontSize: 15,
+          cursor:
+            reviewSending || !reviewSkill.trim() ? "not-allowed" : "pointer",
+          opacity: reviewSending || !reviewSkill.trim() ? 0.6 : 1,
+        }}
+      >
+        Submit review
+      </button>
+    </div>
+  </div>
+)}
+
 
 {/* INBOX MODAL (MVP) */}
 {inboxOpen && (
