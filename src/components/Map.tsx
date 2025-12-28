@@ -219,6 +219,8 @@ const [reviewRating, setReviewRating] = useState(5);
 const [reviewComment, setReviewComment] = useState("");
 const [reviewSkill, setReviewSkill] = useState("");
 const [reviewSending, setReviewSending] = useState(false);
+const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(null);
+
 
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -227,6 +229,60 @@ const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
 
+// 1) AUTH rehydrate + listener (fixes incognito / refresh sign-out)
+useEffect(() => {
+  let isMounted = true;
+
+  async function boot() {
+    const { data } = await supabase.auth.getSession();
+    const sess = data.session;
+
+    if (!isMounted) return;
+
+    setSessionUserId(sess?.user?.id ?? null);
+    setSessionEmail(sess?.user?.email ?? null);
+
+    try {
+      await loadTrades();
+    } catch {}
+
+    if (sess?.user?.id) {
+      try {
+        await loadInbox();
+      } catch {}
+    }
+  }
+
+  boot();
+
+  const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!isMounted) return;
+
+    setSessionUserId(session?.user?.id ?? null);
+    setSessionEmail(session?.user?.email ?? null);
+
+    if (!session) {
+      setInbox([]);
+      setThreadMsgs([]);
+      setActiveThreadTradeId(null);
+    } else {
+      try {
+        await loadTrades();
+      } catch {}
+      try {
+        await loadInbox();
+      } catch {}
+    }
+  });
+
+  return () => {
+    isMounted = false;
+    sub.subscription.unsubscribe();
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+// 2) When a pin is selected, load its completed_trade row (if any)
 useEffect(() => {
   if (!selectedTradeId) {
     setCompletedTrade(null);
@@ -235,6 +291,14 @@ useEffect(() => {
   loadCompletedTrade(selectedTradeId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [selectedTradeId]);
+
+// 3) When a conversation thread is opened, load its completed_trade row (if any)
+useEffect(() => {
+  if (!activeThreadTradeId) return;
+  loadCompletedTrade(activeThreadTradeId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [activeThreadTradeId]);
+
 
 
 /* Profile state + load/save logic */
@@ -470,7 +534,6 @@ const [inboxError, setInboxError] = useState<string>("");
 
 const [inboxOpen, setInboxOpen] = useState(false);
 const [inboxLimit, setInboxLimit] = useState(3); 
-const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(null);
 const [threadMsgs, setThreadMsgs] = useState<MsgRow[]>([]);
 const [threadLoading, setThreadLoading] = useState(false);
 
@@ -533,9 +596,10 @@ async function sendThreadReply() {
     }
 
     setReplyBody("");
-    await loadThread(activeThreadTradeId);
-    await loadInbox();
-    await updateReviewGate(activeThreadTradeId);
+await loadThread(activeThreadTradeId);
+await loadInbox();
+await updateReviewGate(activeThreadTradeId);
+await loadCompletedTrade(activeThreadTradeId);
 
   } finally {
     setReplySending(false);
@@ -2740,8 +2804,15 @@ await loadCompletedTrade(selectedTrade.id);
       }
 
       // 3) Refresh UI
-      setSelectedTradeId(null);
-      await loadTrades();
+      // 3) Update review gate + refresh completed row
+await updateReviewGate(selectedTrade.id);
+await loadCompletedTrade(selectedTrade.id);
+
+// 4) Refresh UI
+setSelectedTradeId(null);
+await loadTrades();
+
+
     }}
     style={{
       width: "100%",
@@ -3228,6 +3299,25 @@ await loadCompletedTrade(selectedTrade.id);
 
               </div>
             ))}
+{canReview && revieweeUserId && (
+  <button
+    onClick={() => setReviewOpen(true)}
+    style={{
+      width: "100%",
+      marginTop: 10,
+      marginBottom: 10,
+      padding: 12,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.15)",
+      color: "white",
+      fontWeight: 900,
+      cursor: "pointer",
+    }}
+  >
+    Leave Review
+  </button>
+)}
 
             <div
   style={{
