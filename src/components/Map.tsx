@@ -920,18 +920,34 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
-  // Auto-load inbox when session appears (no manual refresh needed)
+  // Auto-load inbox ONLY after auth session is fully ready
 useEffect(() => {
-  if (!sessionEmail) {
-    setInbox([]);
-    setInboxError("");
-    return;
+  let cancelled = false;
+
+  async function initAfterAuth() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (cancelled) return;
+
+    if (!session?.user) {
+      setInbox([]);
+      setInboxError("");
+      return;
+    }
+
+    setInboxLimit(3);
+    await loadInbox();
   }
 
-  setInboxLimit(3); // reset the list each time you log in
-  loadInbox();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  initAfterAuth();
+
+  return () => {
+    cancelled = true;
+  };
 }, [sessionEmail]);
+
 
 
   // 3) Render markers whenever filteredTrades changes
