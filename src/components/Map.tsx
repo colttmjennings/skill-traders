@@ -2759,14 +2759,24 @@ opacity: sessionEmail ? 1 : 0.6,
                   background: "rgba(255,255,255,0.04)",
                 }}
               >
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-  {`From: ${
-    (m as any).from_profile?.username
-      ? `@${(m as any).from_profile.username}`
-      : (m.from_email ?? "Unknown")
-  } • `}
+                <div
+  style={{
+    fontSize: 12,
+    opacity: 0.7,
+    cursor: "pointer",
+    textDecoration: "underline",
+    display: "inline-block",
+  }}
+  onClick={async () => {
+    if (!m.from_user_id) return;
+    await loadPublicProfile(m.from_user_id);
+    setPanelView("publicProfile");
+  }}
+>
+  From: @{m.from_user_id ? usernamesById[m.from_user_id] ?? "user" : "user"} •{" "}
   {new Date(m.created_at).toLocaleString()}
 </div>
+
 
 
                 <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, whiteSpace: "pre-wrap" }}>
