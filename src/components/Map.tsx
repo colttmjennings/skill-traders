@@ -391,6 +391,8 @@ useEffect(() => {
 const [msgEmail, setMsgEmail] = useState("");
 const [msgBody, setMsgBody] = useState("");
 const [sendingMsg, setSendingMsg] = useState(false);
+const [authReady, setAuthReady] = useState(false);
+
 const [pendingMessageTradeId, setPendingMessageTradeId] = useState<string | null>(null);
 
 
@@ -746,19 +748,23 @@ const otherMsg =
   msgs.find((m) => m.to_user_id && m.to_user_id !== me) ??
   latest;
 
-// Fallback label (email only for now; usernames come next step)
+// Identify the "other" user id (preferred) and keep email only as fallback
+const otherUserId =
+  (otherMsg?.from_user_id && otherMsg.from_user_id !== me ? otherMsg.from_user_id : null) ??
+  (otherMsg?.to_user_id && otherMsg.to_user_id !== me ? otherMsg.to_user_id : null) ??
+  null;
+
 const otherEmail = otherMsg?.from_email ?? "user";
-const otherLabel = otherEmail;
 
+return {
+  ...latest,
+  trade_id,
+  __hasUnread: hasUnread,
+  __otherUserId: otherUserId,
+  __otherEmail: otherEmail,
+};
+});
 
-      return {
-        ...latest,
-        trade_id,
-        __hasUnread: hasUnread,
-        __otherEmail: otherEmail,
-        __otherLabel: otherLabel,
-      };
-    });
 
     // Sort threads by latest message time
     grouped.sort(
@@ -772,6 +778,30 @@ const otherLabel = otherEmail;
     });
 
     setInbox(filtered as any[]);
+
+// Fetch usernames for inbox rows
+const inboxUserIds = Array.from(
+  new Set(
+    filtered
+      .map((m: any) => m.__otherUserId)
+      .filter((id: string | null) => !!id)
+  )
+) as string[];
+
+if (inboxUserIds.length) {
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .in("id", inboxUserIds);
+
+  const map: Record<string, string> = {};
+  (profs ?? []).forEach((p: any) => {
+    if (p?.id && p?.username) map[p.id] = p.username;
+  });
+
+  setUsernamesById((prev) => ({ ...prev, ...map }));
+}
+
   } catch (e: any) {
     setInboxError(e?.message ?? "unknown error");
     setInbox([]);
@@ -912,18 +942,24 @@ if (ids.length) {
 }
 
   useEffect(() => {
-    loadTrades();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  if (!authReady) return;
+  loadTrades();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [authReady]);
+
   // Auto-refresh map pins every 30 seconds (no Supabase Realtime)
+// Auto-refresh map pins every 30 seconds (no Supabase Realtime)
 useEffect(() => {
+  if (!authReady) return;
+
   const interval = setInterval(() => {
     loadTrades();
   }, 30000); // 30 seconds
 
   return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+}, [authReady]);
+
 
   // Auto-load inbox ONLY after auth session is fully ready
 useEffect(() => {
@@ -939,6 +975,8 @@ useEffect(() => {
     if (!session?.user) {
       setInbox([]);
       setInboxError("");
+      setAuthReady(true);
+
       return;
     }
 if (pendingMessageTradeId) {
@@ -951,7 +989,7 @@ if (pendingMessageTradeId) {
   setMessageOpen(true);
   setPendingMessageTradeId(null);
 }
-
+setAuthReady(true);
     setInboxLimit(3);
     await loadInbox();
   }
@@ -1967,7 +2005,9 @@ setTimeout(() => setStatus(""), 1200);
 >
 
       {inbox.slice(0, inboxLimit).map((m) => {
-  const otherLabel = (m as any).__otherLabel ?? (m as any).__otherEmail ?? m.from_email ?? "user";
+  const otherUserId = (m as any).__otherUserId as string | null;
+const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}` : "@user";
+
   const hasUnread = !!(m as any).__hasUnread;
 
   return (
