@@ -631,6 +631,24 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [sessionUserId, inboxOpen, activeThreadTradeId]);
 
+async function fetchUsernamesForIds(ids: string[]) {
+  const unique = Array.from(new Set(ids.filter(Boolean))) as string[];
+  if (!unique.length) return {};
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .in("id", unique);
+
+  if (error) return {};
+
+  const map: Record<string, string> = {};
+  (data ?? []).forEach((p: any) => {
+    if (p?.id && p?.username) map[p.id] = p.username;
+  });
+
+  return map;
+}
 
 // 2.5) Load inbox (one row per thread)
 async function loadInbox() {
@@ -666,6 +684,16 @@ async function loadInbox() {
     }
 
     const rows = (data ?? []) as any[];
+    // Build username map for everyone involved in these messages
+const idsToLookup = rows
+  .flatMap((r) => [r.from_user_id, r.to_user_id])
+  .filter(Boolean) as string[];
+
+const nameMap = await fetchUsernamesForIds(idsToLookup);
+
+// Merge into state (don’t wipe existing)
+setUsernamesById((prev) => ({ ...prev, ...nameMap }));
+
 
     // Group by trade_id
     const byTrade = new globalThis.Map<string, any[]>();
@@ -742,7 +770,8 @@ async function loadThread(tradeId: string) {
 
     const { data, error } = await supabase
       .from("messages")
-      .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at, from_profile:profiles!messages_from_user_id_fkey(username)")
+     .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
+
       .eq("trade_id", tradeId)
       .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
       .order("created_at", { ascending: true });
