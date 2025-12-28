@@ -535,6 +535,8 @@ async function sendThreadReply() {
     setReplyBody("");
     await loadThread(activeThreadTradeId);
     await loadInbox();
+    await updateReviewGate(activeThreadTradeId);
+
   } finally {
     setReplySending(false);
   }
@@ -960,6 +962,18 @@ async function loadThread(tradeId: string) {
     setThreadLoading(false);
   }
 }
+async function updateReviewGate(tradeId: string) {
+  if (!tradeId) return;
+
+  // Calls your SQL function (created earlier) to update thread_message_count + reviews_enabled
+  const { error } = await supabase.rpc("update_completed_trade_review_gate", {
+    p_trade_id: tradeId,
+  });
+
+  // Non-fatal; don’t break the UI if it fails
+  if (error) console.warn("update_review_gate failed:", error.message);
+}
+
 async function loadCompletedTrade(tradeId: string) {
   const { data, error } = await supabase
     .from("completed_trades")
@@ -1516,6 +1530,9 @@ async function sendMessage() {
 setTimeout(() => setStatus(""), 1200);
     setMessageOpen(false);
     setMsgBody("");
+    await updateReviewGate(selectedTrade.id);
+
+
   } catch (e: any) {
     alert(`Message failed: ${e?.message ?? "unknown error"}`);
   } finally {
@@ -2247,6 +2264,29 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
     </div>
   );
 })}
+{/* Review button (only when this trade is completed and you are a participant) */}
+{canReview && revieweeUserId && (
+  <button
+    onClick={() => {
+      setReviewOpen(true);
+    }}
+    style={{
+      width: "100%",
+      marginTop: 10,
+      padding: 11,
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.15)",
+      color: "white",
+      fontWeight: 900,
+      fontSize: 14,
+      cursor: "pointer",
+    }}
+  >
+    Leave Review
+  </button>
+)}
+
 
 <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8, opacity: 0.9 }}>
@@ -2659,6 +2699,10 @@ opacity: sessionEmail ? 1 : 0.6,
         alert(`Archive failed: ${insertErr.message}`);
         return;
       }
+      // Update review gate immediately after completion
+await updateReviewGate(selectedTrade.id);
+await loadCompletedTrade(selectedTrade.id);
+
 
       // 2) Delete from active trades
       const { error: delErr } = await supabase
