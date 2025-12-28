@@ -1079,7 +1079,11 @@ popup.on("open", () => {
       return;
     }
 
-    setMessageOpen(true);
+    if (!pUsername) {
+  loadMyProfile();
+}
+setMessageOpen(true);
+
   };
 });
 
