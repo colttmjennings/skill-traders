@@ -9,30 +9,73 @@ export default function ResetPasswordPage() {
   const [status, setStatus] = useState<string>("Checking reset link...");
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    // Supabase recovery links typically include tokens in the URL hash.
-    // We just verify there's *some* auth context before allowing update.
-    (async () => {
+ useEffect(() => {
+  let cancelled = false;
+
+  async function run() {
+    try {
+      // 1) PKCE reset links look like: /auth/reset?code=XXXX
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+
+        // Clean URL (optional, avoids re-consuming code)
+        window.history.replaceState({}, "", url.pathname);
+      } else {
+        // 2) Hash reset links look like: /auth/reset#access_token=...&refresh_token=...&type=recovery
+        const hash = window.location.hash.startsWith("#")
+          ? window.location.hash.slice(1)
+          : "";
+
+        if (hash) {
+          const params = new URLSearchParams(hash);
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+          const type = params.get("type");
+
+          if (type === "recovery" && access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+            if (error) throw error;
+
+            // Clean URL (optional)
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        }
+      }
+
+      // Now that we consumed the link, a session should exist (if link is valid)
       const { data } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
       if (data.session) {
         setStatus("Enter a new password.");
         setReady(true);
-        return;
+      } else {
+        setStatus("Reset link is invalid or expired. Please request a new password reset.");
+        setReady(false);
       }
+    } catch (e: any) {
+      console.error("Reset link handling failed:", e?.message ?? e);
+      if (cancelled) return;
+      setStatus("Reset link is invalid or expired. Please request a new password reset.");
+      setReady(false);
+    }
+  }
 
-      // If session isn't present yet, give it a moment (some browsers delay hash parsing)
-      setTimeout(async () => {
-        const { data: data2 } = await supabase.auth.getSession();
-        if (data2.session) {
-          setStatus("Enter a new password.");
-          setReady(true);
-        } else {
-          setStatus("Reset link is invalid or expired. Please request a new password reset.");
-          setReady(false);
-        }
-      }, 300);
-    })();
-  }, []);
+  run();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
 
   async function updatePassword() {
     if (!pw1 || pw1.length < 6) {
