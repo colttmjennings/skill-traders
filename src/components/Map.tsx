@@ -391,6 +391,8 @@ useEffect(() => {
 const [msgEmail, setMsgEmail] = useState("");
 const [msgBody, setMsgBody] = useState("");
 const [sendingMsg, setSendingMsg] = useState(false);
+const [pendingMessageTradeId, setPendingMessageTradeId] = useState<string | null>(null);
+
 
 // --- INBOX (MVP) ---
 type MsgRow = {
@@ -435,10 +437,13 @@ function getThreadOtherUserId(me: string, msgs: MsgRow[]) {
 
 async function sendThreadReply() {
   if (!sessionEmail) {
-    setAuthOpen(true);
-    setAuthSent(false);
-    return;
-  }
+  setPendingMessageTradeId(activeThreadTradeId);
+  setAuthOpen(true);
+  setAuthSent(false);
+  return;
+}
+
+
   if (!activeThreadTradeId) return;
 
   const me = sessionUserId;
@@ -936,6 +941,16 @@ useEffect(() => {
       setInboxError("");
       return;
     }
+if (pendingMessageTradeId) {
+  setSelectedTradeId(pendingMessageTradeId);
+
+  if (!pUsername) {
+    loadMyProfile();
+  }
+
+  setMessageOpen(true);
+  setPendingMessageTradeId(null);
+}
 
     setInboxLimit(3);
     await loadInbox();
@@ -946,7 +961,8 @@ useEffect(() => {
   return () => {
     cancelled = true;
   };
-}, [sessionEmail]);
+}, [sessionEmail, pendingMessageTradeId, pUsername]);
+
 
 
 
@@ -1090,10 +1106,12 @@ popup.on("open", () => {
 
 
     if (!sessionEmail) {
-      setAuthOpen(true);
-      setAuthSent(false);
-      return;
-    }
+  setPendingMessageTradeId(t.id);
+  setAuthOpen(true);
+  setAuthSent(false);
+  return;
+}
+
 
     if (!pUsername) {
   loadMyProfile();
@@ -2381,10 +2399,12 @@ setTimeout(() => setStatus(""), 1200);
   <button
     onClick={() => {
   if (!sessionEmail) {
-    setAuthOpen(true);
-    setAuthSent(false);
-    return;
-  }
+  setPendingMessageTradeId(selectedTrade.id);
+  setAuthOpen(true);
+  setAuthSent(false);
+  return;
+}
+
 
   setMessageOpen(true);
 }}
