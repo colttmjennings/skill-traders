@@ -803,6 +803,31 @@ async function loadThread(tradeId: string) {
     }
 
     setThreadMsgs((data ?? []) as any[]);
+        const ids = Array.from(
+      new Set(
+        (data ?? [])
+          .flatMap((m: any) => [m.from_user_id, m.to_user_id])
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    if (ids.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ids);
+
+      if (profs) {
+        setUsernamesById((prev) => {
+          const next = { ...prev };
+          (profs as any[]).forEach((p) => {
+            if (p?.id && p?.username) next[p.id] = p.username;
+          });
+          return next;
+        });
+      }
+    }
+
   } finally {
     setThreadLoading(false);
   }
