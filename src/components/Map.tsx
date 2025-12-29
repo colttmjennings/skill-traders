@@ -315,17 +315,25 @@ type ProfileRow = {
 };
 const [publicProfile, setPublicProfile] = useState<ProfileRow | null>(null);
 const [publicSkills, setPublicSkills] = useState<string[]>([]);
+type SkillRatingRow = {
+  skill_key: string;
+  avg_rating: number;
+  review_count: number;
+  tier: string | null;
+};
+
+const [publicSkillRatings, setPublicSkillRatings] = useState<SkillRatingRow[]>([]);
+
 type CompletedTradeRow = {
   trade_id: string;
   owner_user_id: string;
   completed_by_user_id: string;
   completed_at: string | null;
   status: string | null;
-
-  // review gate columns (from completed_trades)
   thread_message_count: number | null;
   reviews_enabled: boolean | null;
 };
+
 
 
 const [completedTrade, setCompletedTrade] = useState<CompletedTradeRow | null>(null);
@@ -440,6 +448,20 @@ async function loadPublicProfile(userId: string) {
 
   setPublicProfile(data as ProfileRow);
   setPublicSkills((data.skills ?? []) as string[]);
+  // Load skill rating tiers for this user
+try {
+  const { data: ratings, error: rErr } = await supabase
+    .from("skill_rating_summary")
+    .select("skill_key, avg_rating, review_count, tier")
+    .eq("user_id", userId)
+    .order("avg_rating", { ascending: false });
+
+  if (rErr) console.warn("skill_rating_summary load failed:", rErr.message);
+  setPublicSkillRatings((ratings ?? []) as any);
+} catch {
+  setPublicSkillRatings([]);
+}
+
 }
 
 
@@ -1976,7 +1998,7 @@ setTimeout(() => setStatus(""), 1200);
           }}
           title="Tier badge (coming soon)"
         >
-          —
+          NEW
         </span>
       </div>
     ))}
@@ -2205,6 +2227,56 @@ setTimeout(() => setStatus(""), 1200);
           </div>
         ))}
       </div>
+      {publicSkillRatings.length > 0 ? (
+  <div style={{ marginTop: 12 }}>
+    <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
+      Ratings (by skill)
+    </div>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {publicSkillRatings.map((r) => (
+        <div
+          key={r.skill_key}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 13 }}>
+              {r.skill_key}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              {Number(r.avg_rating).toFixed(2)} ★ • {r.review_count} review{r.review_count === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.08)",
+              fontWeight: 900,
+              fontSize: 12,
+              minWidth: 44,
+              textAlign: "center",
+            }}
+            title={r.tier ? `Tier ${r.tier}` : "New (not enough reviews yet)"}
+          >
+            {r.tier ?? "NEW"}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+) : null}
+
     </div>
   </div>
 )}
