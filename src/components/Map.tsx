@@ -357,8 +357,28 @@ useEffect(() => {
   // Must be gate-enabled (prevents “review” from showing when enabled=false)
   
   if (!completedTrade.reviews_enabled) return;
-  setRevieweeUserId(other);
-  setCanReview(true);
+
+// Must be a participant
+const isParticipant =
+  completedTrade.owner_user_id === sessionUserId ||
+  completedTrade.completed_by_user_id === sessionUserId;
+
+if (!isParticipant) return;
+
+// Who am I reviewing? (the other participant)
+const otherUser =
+  completedTrade.owner_user_id === sessionUserId
+    ? completedTrade.completed_by_user_id
+    : completedTrade.owner_user_id;
+
+if (!otherUser) return;
+
+// If I've already reviewed, don't allow again
+if (alreadyReviewed) return;
+
+setRevieweeUserId(otherUser);
+setCanReview(true);
+
 }, [completedTrade, sessionUserId]);
 
 
@@ -953,11 +973,12 @@ return {
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Remove any threads where the "other" is actually me
-    const filtered = grouped.filter((m: any) => {
-      const other = (m as any).__otherEmail;
-      return other && other !== sessionEmail;
-    });
+    // Remove any threads where the "other" is actually me (use userId, not email)
+const filtered = grouped.filter((m: any) => {
+  const otherId = (m as any).__otherUserId;
+  return otherId && otherId !== me;
+});
+
 
     setInbox(filtered as any[]);
 
@@ -1020,6 +1041,8 @@ async function loadThread(tradeId: string) {
     }
 
     setThreadMsgs((data ?? []) as any[]);
+        await updateReviewGate(tradeId);
+    await loadCompletedTrade(tradeId);
         const ids = Array.from(
       new Set(
         (data ?? [])
@@ -2427,6 +2450,7 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
     setRevieweeSkills(list);
   } finally {
     setReviewOpen(true);
+     setInboxOpen(false);
   }
 }}
 
@@ -2830,13 +2854,47 @@ opacity: sessionEmail ? 1 : 0.6,
         return;
       }
 
-      const completedBy =
-        (await supabase.auth.getUser()).data.user?.id ?? null;
+      // completed_by_user_id should be the OTHER participant from the conversation thread
+const me = (await supabase.auth.getUser()).data.user?.id ?? null;
+if (!me) {
+  alert("You must be signed in to complete a post.");
+  return;
+}
 
-      if (!completedBy) {
-        alert("You must be signed in to complete a post.");
-        return;
-      }
+// Find the other participant from messages on this trade
+let completedBy: string | null = null;
+
+const { data: msgs, error: msgErr } = await supabase
+  .from("messages")
+  .select("from_user_id,to_user_id")
+  .eq("trade_id", selectedTrade.id)
+  .order("created_at", { ascending: false })
+  .limit(50);
+
+if (msgErr) {
+  alert(`Could not read messages for this trade: ${msgErr.message}`);
+  return;
+}
+
+const ids = new Set<string>();
+(msgs ?? []).forEach((m: any) => {
+  if (m?.from_user_id) ids.add(m.from_user_id);
+  if (m?.to_user_id) ids.add(m.to_user_id);
+});
+
+// remove myself
+ids.delete(me);
+
+// pick the other participant
+completedBy = Array.from(ids)[0] ?? null;
+
+if (!completedBy) {
+  alert(
+    "No other participant found. Complete the trade from a conversation after messaging."
+  );
+  return;
+}
+
 
       // 1) Archive into completed_trades
       const { error: insertErr } = await supabase
@@ -2859,9 +2917,7 @@ opacity: sessionEmail ? 1 : 0.6,
         alert(`Archive failed: ${insertErr.message}`);
         return;
       }
-      // Update review gate immediately after completion
-await updateReviewGate(selectedTrade.id);
-await loadCompletedTrade(selectedTrade.id);
+      
 
 
       // 2) Delete from active trades
@@ -2875,13 +2931,16 @@ await loadCompletedTrade(selectedTrade.id);
         return;
       }
 
-      // 3) Update review gate + refresh completed row
+      // 3) Update review gate + refresh completed row + refresh thread/inbox
 await updateReviewGate(selectedTrade.id);
 await loadCompletedTrade(selectedTrade.id);
+await loadThread(selectedTrade.id);
+await loadInbox();
 
 // 4) Refresh UI
 setSelectedTradeId(null);
 await loadTrades();
+
 
 
     }}
@@ -3414,8 +3473,9 @@ await loadTrades();
   </div>
 
   {activeThreadTradeId &&
-    completedTrade?.trade_id === activeThreadTradeId &&
-    completedTrade?.reviews_enabled && (
+  completedTrade?.trade_id === activeThreadTradeId &&
+  completedTrade?.reviews_enabled &&
+  !alreadyReviewed && (
       <button
         onClick={() => setReviewOpen(true)}
         style={{
