@@ -2430,14 +2430,14 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("skills")
+      .select("skills, skills_offered")
       .eq("id", revieweeUserId)
       .maybeSingle();
 
     if (error) console.warn("load reviewee skills error:", error);
 
     // Accept either a string[] or a comma-separated string (defensive)
-    const raw = (data as any)?.skills;
+    const raw = (data as any)?.skills ?? (data as any)?.skills_offered;
     const list: string[] = Array.isArray(raw)
       ? raw
       : typeof raw === "string"
@@ -2448,6 +2448,14 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
       : [];
 
     setRevieweeSkills(list);
+    // If they haven't listed skills, default to General Trade
+if (!list.length) {
+  setReviewSkill("General Trade");
+} else {
+  // If current selection isn't in their list, reset to first option
+  if (!list.includes(reviewSkill)) setReviewSkill(list[0]);
+}
+
   } finally {
     setReviewOpen(true);
      setInboxOpen(false);
@@ -2569,6 +2577,23 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
   )}
 </div>
 
+<div
+  style={{
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    fontSize: 13,
+    fontWeight: 650,
+    opacity: 0.92,
+    lineHeight: 1.35,
+  }}
+>
+  Reviews are left <b>inside the conversation</b> after a trade is marked{" "}
+  <b>Trade Completed</b>. Don’t delete the thread until both sides leave a review.
+</div>
 
         {/* Filters */}
         <div style={{ fontWeight: 600, fontSize: 14 }}>Filters</div>
@@ -2798,31 +2823,7 @@ opacity: sessionEmail ? 1 : 0.6,
   >
     Message
   </button>
-  {canReview && revieweeUserId && (
-  <button
-    onClick={() => {
-  setReviewRating(5);
-  setReviewComment("");
-  setReviewSkill("");
-  setReviewOpen(true);
-}}
-
-    style={{
-      width: "100%",
-      marginTop: 8,
-      padding: 11,
-      borderRadius: 12,
-      background: "rgba(255,255,255,0.08)",
-      border: "1px solid rgba(255,255,255,0.15)",
-      color: "white",
-      fontWeight: 900,
-      fontSize: 14,
-      cursor: "pointer",
-    }}
-  >
-    Leave Review
-  </button>
-)}
+  
 
 {selectedTrade.user_id === sessionUserId && (
 
@@ -2956,7 +2957,7 @@ await loadTrades();
       cursor: "pointer",
     }}
   >
-    Mark Completed
+    Trade Completed
   </button>
 )}
 
@@ -3285,6 +3286,12 @@ await loadTrades();
     </option>
   ))}
 </select>
+{revieweeSkills.length === 0 && (
+  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
+    This user hasn’t listed specific skills yet — your review will be saved as <b>General Trade</b>.
+  </div>
+)}
+
 
       </div>
 
@@ -3442,25 +3449,7 @@ await loadTrades();
 
               </div>
             ))}
-{canReview && revieweeUserId && (
-  <button
-    onClick={() => setReviewOpen(true)}
-    style={{
-      width: "100%",
-      marginTop: 10,
-      marginBottom: 10,
-      padding: 12,
-      borderRadius: 12,
-      background: "rgba(255,255,255,0.08)",
-      border: "1px solid rgba(255,255,255,0.15)",
-      color: "white",
-      fontWeight: 900,
-      cursor: "pointer",
-    }}
-  >
-    Leave Review
-  </button>
-)}
+
 {/* REVIEW GATE (debug-safe) */}
 <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
   <div style={{ fontSize: 12, opacity: 0.75 }}>
@@ -3477,18 +3466,47 @@ await loadTrades();
   completedTrade?.reviews_enabled &&
   !alreadyReviewed && (
       <button
-        onClick={() => setReviewOpen(true)}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 10,
-          border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(16,185,129,0.18)",
-          color: "white",
-          fontWeight: 900,
-          cursor: "pointer",
-          fontSize: 12,
-          marginLeft: "auto",
-        }}
+        onClick={async () => {
+  try {
+    setRevieweeSkills([]); // reset each time
+    if (!revieweeUserId) {
+      setReviewOpen(true);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("skills, skills_offered")
+      .eq("id", revieweeUserId)
+      .maybeSingle();
+
+    if (error) console.warn("load reviewee skills error:", error);
+
+    // Accept either a string[] or a comma-separated string (defensive)
+    const raw = (data as any)?.skills ?? (data as any)?.skills_offered;
+    const list: string[] = Array.isArray(raw)
+      ? raw
+      : typeof raw === "string"
+      ? raw
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    setRevieweeSkills(list);
+    // If they haven't listed skills, default to General Trade
+if (!list.length) {
+  setReviewSkill("General Trade");
+} else {
+  // If current selection isn't in their list, reset to first option
+  if (!list.includes(reviewSkill)) setReviewSkill(list[0]);
+}
+
+  } finally {
+    setReviewOpen(true);
+    setInboxOpen(false);
+  }
+}}
       >
         Leave Review
       </button>
