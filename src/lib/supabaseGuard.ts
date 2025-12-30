@@ -8,7 +8,9 @@ import { supabase } from "./supabaseClient";
  * This prevents "stuck loading" for returning users.
  */
 export async function ensureSupabaseHealthy(opts?: { timeoutMs?: number }) {
-  const timeoutMs = opts?.timeoutMs ?? 3000;
+    return;
+
+  const timeoutMs = opts?.timeoutMs ?? 12000;
 
   // Run only once per page load (prevents reload loops)
   if (sessionStorage.getItem("st_supabase_health_checked") === "1") return;
@@ -25,24 +27,34 @@ export async function ensureSupabaseHealthy(opts?: { timeoutMs?: number }) {
   };
 
   // 1) Quick auth check
+let sessionUser: any = null;
+try {
+  const { data } = await runWithTimeout(() => supabase.auth.getSession());
+  sessionUser = data?.session?.user ?? null;
+
+  // If the user is not logged in, do NOT reset anything.
+  // Being logged out is a valid state.
+  if (!sessionUser) return;
+} catch {
+  console.warn("Supabase health check failed; NOT resetting auth.");
+return;
+
+}
+
+
+    // 2) Quick data check (tiny read)
+  // IMPORTANT: do NOT hard-reset auth just because a table read fails (RLS/permissions/network blips).
+  // This guard is ONLY to recover from "stuck/hanging" states.
   try {
-    await runWithTimeout(() => supabase.auth.getSession());
-  } catch {
-    await hardResetSupabaseAuth();
+    await runWithTimeout(async () => {
+      await supabase.from("trades").select("id").limit(1);
+      return true;
+    });
+    } catch (e: any) {
+    console.warn("Supabase health check failed; NOT resetting auth.", e);
     return;
   }
 
-  // 2) Quick data check (tiny read)
-  try {
-    await runWithTimeout(async () => {
-      const { error } = await supabase.from("trades").select("id").limit(1);
-      if (error) throw error;
-      return true;
-    });
-  } catch {
-    await hardResetSupabaseAuth();
-    return;
-  }
 }
 
 async function hardResetSupabaseAuth() {

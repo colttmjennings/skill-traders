@@ -225,63 +225,12 @@ const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(nu
 
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+const [authReady, setAuthReady] = useState(false);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
 
-// 1) AUTH rehydrate + listener (fixes incognito / refresh sign-out)
-useEffect(() => {
-  let isMounted = true;
-
-  async function boot() {
-    const { data } = await supabase.auth.getSession();
-    const sess = data.session;
-
-    if (!isMounted) return;
-
-    setSessionUserId(sess?.user?.id ?? null);
-    setSessionEmail(sess?.user?.email ?? null);
-
-    try {
-      await loadTrades();
-    } catch {}
-
-    if (sess?.user?.id) {
-      try {
-        await loadInbox();
-      } catch {}
-    }
-  }
-
-  boot();
-
-  const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (!isMounted) return;
-
-    setSessionUserId(session?.user?.id ?? null);
-    setSessionEmail(session?.user?.email ?? null);
-
-    if (!session) {
-      setInbox([]);
-      setThreadMsgs([]);
-      setActiveThreadTradeId(null);
-    } else {
-      try {
-        await loadTrades();
-      } catch {}
-      try {
-        await loadInbox();
-      } catch {}
-    }
-  });
-
-  return () => {
-    isMounted = false;
-    sub.subscription.unsubscribe();
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
 
 // 2) When a pin is selected, load its completed_trade row (if any)
 useEffect(() => {
@@ -562,7 +511,6 @@ useEffect(() => {
 const [msgEmail, setMsgEmail] = useState("");
 const [msgBody, setMsgBody] = useState("");
 const [sendingMsg, setSendingMsg] = useState(false);
-const [authReady, setAuthReady] = useState(false);
 
 const [pendingMessageTradeId, setPendingMessageTradeId] = useState<string | null>(null);
 
@@ -608,7 +556,7 @@ function getThreadOtherUserId(me: string, msgs: MsgRow[]) {
 }
 
 async function sendThreadReply() {
-  if (!sessionEmail) {
+  if (!sessionUserId) {
   setPendingMessageTradeId(activeThreadTradeId);
   setAuthOpen(true);
   setAuthSent(false);
@@ -637,7 +585,7 @@ async function sendThreadReply() {
         trade_id: activeThreadTradeId,
         from_user_id: me,
         to_user_id: otherUserId,
-        from_email: sessionEmail,
+        from_email: pUsername?.trim() ? `@${pUsername.trim()}` : "",
         body,
       },
     ]);
@@ -756,45 +704,66 @@ useEffect(() => {
 }, [isMobile]);
 
 
-// 0) Auth session: restore + listen for changes
+/// 0) Auth session: restore + listen for changes (single source of truth)
 useEffect(() => {
-  let isMounted = true;
+  let alive = true;
 
-  supabase.auth.getSession().then(({ data }) => {
-    if (!isMounted) return;
-
-    const email = data.session?.user?.email ?? null;
-    const uid = data.session?.user?.id ?? null;
-
-    setSessionEmail(email);
-    setSessionUserId(uid);
-
-    if (email) {
-      setAuthEmail(email);
-      setAuthOpen(false);
-      setAuthSent(false);
-    }
-  });
-
-  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+  const syncSession = async (session: any | null) => {
     const email = session?.user?.email ?? null;
     const uid = session?.user?.id ?? null;
 
+    if (!alive) return;
+
     setSessionEmail(email);
     setSessionUserId(uid);
 
-    if (email) {
-      setAuthEmail(email);
+    if (uid) {
+      // close auth UI
+      if (email) setAuthEmail(email);
       setAuthOpen(false);
       setAuthSent(false);
+
+      // IMPORTANT: pull latest data as soon as session exists
+    } else {
+      // signed out / no session
+      setInbox([]);
     }
+  };
+
+  supabase.auth.getSession().then(({ data }) => {
+    syncSession(data.session ?? null);
+  });
+
+  const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    // Only clear state on an actual sign-out event
+    if (event === "SIGNED_OUT") {
+      syncSession(null);
+      return;
+    }
+
+    // SIGNED_IN / TOKEN_REFRESHED / USER_UPDATED etc.
+    syncSession(session ?? null);
   });
 
   return () => {
-    isMounted = false;
-    authListener.subscription.unsubscribe();
+    alive = false;
+    sub.subscription.unsubscribe();
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
+
+// 0.1) After auth is ready, load core app data (prevents "email/no pins/loading" state)
+useEffect(() => {
+  if (!sessionUserId) return;
+
+  (async () => {
+    try { await loadMyProfile(); } catch {}
+    try { await loadTrades(); } catch {}
+    try { await loadInbox(); } catch {}
+  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [sessionUserId]);
+
 
   // 1) Init map once
   useEffect(() => {
@@ -833,13 +802,6 @@ useEffect(() => {
 
 
   }, []);
-
-  // Auto-load inbox when login state changes
-useEffect(() => {
-  if (sessionEmail) loadInbox();
-  else setInbox([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [sessionEmail]);
 
 // Realtime: auto-refresh inbox when new messages arrive (no page refresh needed)
 useEffect(() => {
@@ -899,7 +861,7 @@ async function fetchUsernamesForIds(ids: string[]) {
 
 // 2.5) Load inbox (one row per thread)
 async function loadInbox() {
-  if (!sessionEmail) {
+  if (!sessionUserId) {
   setInbox([]);
   setInboxError("");
   setInboxLoading(false);
@@ -907,26 +869,42 @@ async function loadInbox() {
 }
 
 
+
   setInboxLoading(true);
   setInboxError("");
 
   try {
     const me = sessionUserId;
-    if (!me) {
-      setInbox([]);
-      return;
-    }
+if (!me) {
+  setInbox([]);
+  setInboxLoading(false);
+  return;
+}
+
 
     // Get messages that involve me (sent OR received)
-    const { data, error } = await supabase
-      .from("messages")
-      .select(
-  "id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at"
-)
+    // Get hidden trade ids for ME only
+const { data: hiddenRows, error: hiddenErr } = await supabase
+  .from("inbox_hidden")
+  .select("trade_id")
+  .eq("user_id", me)
+  .eq("hidden", true);
 
-      .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
-      .order("created_at", { ascending: false })
-      .limit(200);
+if (hiddenErr) {
+  console.warn("inbox_hidden lookup failed:", hiddenErr.message);
+}
+
+const hiddenTradeIds = new Set((hiddenRows ?? []).map((r: any) => r.trade_id));
+
+// Now fetch messages involving me (sent OR received)
+const { data, error } = await supabase
+  .from("messages")
+  .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
+  .or(`from_user_id.eq.${me},to_user_id.eq.${me}`)
+  .order("created_at", { ascending: false })
+  .limit(200);
+
+
 
     if (error) {
       setInboxError(error.message);
@@ -935,6 +913,8 @@ async function loadInbox() {
     }
 
     const rows = (data ?? []) as any[];
+    const rowsVisible = rows.filter((r) => r.trade_id && !hiddenTradeIds.has(r.trade_id));
+
     // Build username map for everyone involved in these messages
 const idsToLookup = rows
   .flatMap((r) => [r.from_user_id, r.to_user_id])
@@ -948,7 +928,7 @@ setUsernamesById((prev) => ({ ...prev, ...nameMap }));
 
     // Group by trade_id
     const byTrade = new globalThis.Map<string, any[]>();
-    for (const r of rows) {
+    for (const r of rowsVisible) {
       if (!r.trade_id) continue;
       const arr = byTrade.get(r.trade_id) ?? [];
       arr.push(r);
@@ -1041,12 +1021,11 @@ if (inboxUserIds.length) {
 
 // 2.6) Load one thread (conversation) for a trade
 async function loadThread(tradeId: string) {
-  if (!sessionEmail) return;
+    if (!sessionUserId) return;
 
   setThreadLoading(true);
   try {
-    const me = (await supabase.auth.getUser()).data.user?.id;
-    if (!me) return;
+    const me = sessionUserId;
 
     const { data, error } = await supabase
       .from("messages")
@@ -1219,66 +1198,21 @@ if (ids.length) {
 }
 
   useEffect(() => {
-  if (!authReady) return;
   loadTrades();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [authReady]);
+}, []);
+
 
   // Auto-refresh map pins every 30 seconds (no Supabase Realtime)
 // Auto-refresh map pins every 30 seconds (no Supabase Realtime)
 useEffect(() => {
-  if (!authReady) return;
-
   const interval = setInterval(() => {
     loadTrades();
   }, 30000); // 30 seconds
 
   return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [authReady]);
-
-
-  // Auto-load inbox ONLY after auth session is fully ready
-useEffect(() => {
-  let cancelled = false;
-
-  async function initAfterAuth() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (cancelled) return;
-
-    if (!session?.user) {
-      setInbox([]);
-      setInboxError("");
-      setAuthReady(true);
-
-      return;
-    }
-if (pendingMessageTradeId) {
-  setSelectedTradeId(pendingMessageTradeId);
-
-  if (!pUsername) {
-    loadMyProfile();
-  }
-
-  setMessageOpen(true);
-  setPendingMessageTradeId(null);
-}
-setAuthReady(true);
-    setInboxLimit(3);
-    await loadInbox();
-  }
-
-  initAfterAuth();
-
-  return () => {
-    cancelled = true;
-  };
-}, [sessionEmail, pendingMessageTradeId, pUsername]);
-
-
+}, []);
 
 
   // 3) Render markers whenever filteredTrades changes
@@ -1557,24 +1491,68 @@ setSelectedTradeId(added.id);
 }
 
 async function deleteMessage(messageId: string) {
-  if (!sessionEmail) return;
-
-  const ok = confirm("Delete this message?");
-  if (!ok) return;
-
-  const { error } = await supabase.from("messages").delete().eq("id", messageId);
-
-  if (error) {
-    alert(`Delete failed: ${error.message}`);
+  if (!sessionUserId) {
+    setAuthOpen(true);
+    setAuthSent(false);
     return;
   }
 
-  // remove locally so UI updates immediately
-  setInbox((prev) => prev.filter((m) => m.id !== messageId));
-  setThreadMsgs((prev) => prev.filter((m) => m.id !== messageId));
-  await loadInbox();
+  const ok = confirm("Hide this conversation?");
+  if (!ok) return;
 
+  // 1) Find the trade_id for this message
+  const { data: msgRow, error: msgErr } = await supabase
+    .from("messages")
+    .select("trade_id")
+    .eq("id", messageId)
+    .maybeSingle();
+
+  if (msgErr) {
+    alert(`Hide failed (lookup): ${msgErr.message}`);
+    return;
+  }
+
+  const tradeId = (msgRow as any)?.trade_id as string | null;
+  if (!tradeId) {
+    alert("Hide failed: missing trade id.");
+    return;
+  }
+
+  // 2) Hide thread for ME only (do NOT delete messages)
+  const { error: hideErr } = await supabase
+    .from("inbox_hidden")
+    .upsert(
+      [
+        {
+          user_id: sessionUserId,
+          trade_id: tradeId,
+          hidden: true,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: "user_id,trade_id" }
+    );
+
+  if (hideErr) {
+    alert(`Hide failed (inbox_hidden): ${hideErr.message}`);
+    return;
+  }
+
+  // 3) Close thread UI if it’s open
+  if (activeThreadTradeId === tradeId) {
+    setActiveThreadTradeId(null);
+    setThreadMsgs([]);
+    setInboxOpen(false);
+  }
+
+  // 4) Remove locally so UI updates immediately
+  setInbox((prev) => prev.filter((m: any) => m.trade_id !== tradeId));
+  setThreadMsgs((prev) => prev.filter((m: any) => m.trade_id !== tradeId));
+
+  // 5) Re-sync inbox
+  await loadInbox();
 }
+
 async function requestPasswordReset() {
   if (authSending) return;
   if (!authEmail.trim()) {
@@ -1662,7 +1640,7 @@ async function logout() {
 
 async function sendMessage() {
   // Require login only when sending
-  if (!sessionEmail) {
+  if (!sessionUserId) {
     setAuthOpen(true);
     setAuthSent(false);
     setSendingMsg(false);
@@ -1687,9 +1665,9 @@ async function sendMessage() {
     const { error } = await supabase.from("messages").insert([
       {
   trade_id: selectedTrade.id,
-  from_user_id: (await supabase.auth.getUser()).data.user?.id,
+  from_user_id: sessionUserId,
   to_user_id: selectedTrade.user_id,
-  from_email: sessionEmail,
+  from_email: pUsername?.trim() ? `@${pUsername.trim()}` : "",
   body: body,
 }
 
@@ -2450,12 +2428,18 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
   const me = sessionUserId;
   if (!me) return;
 
-  // Delete the entire conversation (thread)
-  await supabase
-    .from("messages")
-    .delete()
-    .eq("trade_id", m.trade_id)
-    .or(`from_user_id.eq.${me},to_user_id.eq.${me}`);
+    // Hide this thread for ME only (do not delete messages)
+  const { error: hideErr } = await supabase
+    .from("inbox_hidden")
+    .upsert(
+      { user_id: me, trade_id: m.trade_id, hidden: true, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,trade_id" }
+    );
+
+  if (hideErr) {
+    alert(hideErr.message);
+    return;
+  }
 
   // If this thread is open, close it
   if (activeThreadTradeId === m.trade_id) {
@@ -2868,12 +2852,13 @@ if (!list.length) {
 
   <button
     onClick={() => {
-  if (!sessionEmail) {
+  if (!sessionUserId) {
   setPendingMessageTradeId(selectedTrade.id);
   setAuthOpen(true);
   setAuthSent(false);
   return;
 }
+
 
 
   setMessageOpen(true);
@@ -2888,8 +2873,8 @@ if (!list.length) {
       color: "#06101a",
       fontWeight: 900,
       fontSize: 15,
-      cursor: sessionEmail ? "pointer" : "not-allowed",
-opacity: sessionEmail ? 1 : 0.6,
+      cursor: sessionUserId ? "pointer" : "not-allowed",
+opacity: sessionUserId ? 1 : 0.6,
 
     }}
   >
@@ -3007,8 +2992,9 @@ if (!completedBy) {
       // 3) Update review gate + refresh completed row + refresh thread/inbox
 await updateReviewGate(selectedTrade.id);
 await loadCompletedTrade(selectedTrade.id);
-await loadThread(selectedTrade.id);
 await loadInbox();
+setActiveThreadTradeId(selectedTrade.id);
+await loadThread(selectedTrade.id);
 
 // 4) Refresh UI
 setSelectedTradeId(null);
