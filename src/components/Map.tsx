@@ -1966,13 +1966,16 @@ setTimeout(() => setStatus(""), 1200);
         {/* Tier badge (image or NEW) */}
 {(() => {
   const tier = tierForSkill(skill, publicSkillRatings); // "D" | "C" | "B" | "A" | "S" | "NEW"
-  const src = tier === "NEW" ? null : `/badges/badge_${tier}_96h.png`;
+  const cleanTier = (tier ?? "NEW").toString().trim().toUpperCase();
+const src = cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
+
 
   return src ? (
     <img
       src={src}
-      alt={`Tier ${tier}`}
-      title={`Tier ${tier}`}
+      alt={`Tier ${cleanTier}`}
+title={`Tier ${cleanTier}`}
+
       style={{
         width: 26,
         height: 26,
