@@ -263,6 +263,8 @@ type SkillRatingRow = {
 };
 
 const [publicSkillRatings, setPublicSkillRatings] = useState<SkillRatingRow[]>([]);
+const [mySkillRatings, setMySkillRatings] = useState<SkillRatingRow[]>([]);
+
 function tierForSkill(skill: string, ratings: any[]) {
   const row = (ratings ?? []).find(
     (r: any) => (r?.skill_key ?? "").toLowerCase() === (skill ?? "").toLowerCase()
@@ -384,6 +386,22 @@ async function loadMyProfile() {
     setPBio(row.bio ?? "");
     setPAvatarUrl(row.avatar_url ?? null);
     setPSkillsText((row.skills ?? []).join(", "));
+    // Load MY skill rating tiers (for my profile view)
+try {
+  const { data: myRatings, error: myRErr } = await supabase
+    .from("skill_rating_summary")
+    .select("skill_key, avg_rating, review_count, tier")
+    .eq("user_id", sessionUserId)
+    .order("avg_rating", { ascending: false });
+
+  if (myRErr) {
+    console.warn("my skill_rating_summary load failed:", myRErr.message);
+  }
+
+  setMySkillRatings((myRatings ?? []) as any);
+} catch {
+  setMySkillRatings([]);
+}
   } finally {
     setProfileLoading(false);
   }
@@ -1947,7 +1965,7 @@ setTimeout(() => setStatus(""), 1200);
       .filter(Boolean) || []
     ).map((skill) => (
       <div
-        key={`${skill}-${tierForSkill(skill, publicSkillRatings)}`}
+        key={`${skill}-${tierForSkill(skill, mySkillRatings)}`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -1965,7 +1983,7 @@ setTimeout(() => setStatus(""), 1200);
 
         {/* Tier badge (image or NEW) */}
 {(() => {
-  const tier = tierForSkill(skill, publicSkillRatings); // "D" | "C" | "B" | "A" | "S" | "NEW"
+  const tier = tierForSkill(skill, mySkillRatings); // "D" | "C" | "B" | "A" | "S" | "NEW"
   const cleanTier = (tier ?? "NEW").toString().trim().toUpperCase();
 const src = cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
 
@@ -2202,7 +2220,7 @@ title={`Tier ${cleanTier}`}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {publicSkills.map((skill) => (
           <div
-            key={`${skill}-${tierForSkill(skill, publicSkillRatings)}`}
+            key={`${skill}-${tierForSkill(skill, mySkillRatings)}`}
             style={{
               display: "flex",
               alignItems: "center",
@@ -2218,7 +2236,7 @@ title={`Tier ${cleanTier}`}
             <span>{skill}</span>
             {/* Tier badge (image or NEW) */}
 {(() => {
-  const tier = tierForSkill(skill, publicSkillRatings);
+  const tier = tierForSkill(skill, mySkillRatings);
   const cleanTier = (tier ?? "NEW").toString().trim().toUpperCase();
   const src = cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
 
