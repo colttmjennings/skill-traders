@@ -1947,7 +1947,7 @@ setTimeout(() => setStatus(""), 1200);
       .filter(Boolean) || []
     ).map((skill) => (
       <div
-        key={skill}
+        key={`${skill}-${tierForSkill(skill, publicSkillRatings)}`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -2202,7 +2202,7 @@ title={`Tier ${cleanTier}`}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {publicSkills.map((skill) => (
           <div
-            key={skill}
+            key={`${skill}-${tierForSkill(skill, publicSkillRatings)}`}
             style={{
               display: "flex",
               alignItems: "center",
@@ -2216,23 +2216,42 @@ title={`Tier ${cleanTier}`}
             }}
           >
             <span>{skill}</span>
-            <div
-  style={{
-    width: 24,
-    height: 24,
-    borderRadius: "50%",
-    background: "rgba(255,255,255,0.18)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 10,
-    fontWeight: 900,
-    opacity: 0.9,
-  }}
-  title={`Tier ${tierForSkill(skill, publicSkillRatings)}`}
->
-  {tierForSkill(skill, publicSkillRatings)}
-</div>
+            {/* Tier badge (image or NEW) */}
+{(() => {
+  const tier = tierForSkill(skill, publicSkillRatings);
+  const cleanTier = (tier ?? "NEW").toString().trim().toUpperCase();
+  const src = cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
+
+  return src ? (
+    <img
+      src={src}
+      alt={`Tier ${cleanTier}`}
+      title={`Tier ${cleanTier}`}
+      style={{
+        width: 22,
+        height: 22,
+        objectFit: "contain",
+        marginLeft: 2,
+      }}
+    />
+  ) : (
+    <span
+      title="New (not enough reviews yet)"
+      style={{
+        fontSize: 10,
+        fontWeight: 900,
+        opacity: 0.7,
+        padding: "2px 8px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background: "rgba(255,255,255,0.06)",
+      }}
+    >
+      NEW
+    </span>
+  );
+})()}
+
 
           </div>
         ))}
