@@ -2220,7 +2220,7 @@ title={`Tier ${cleanTier}`}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {publicSkills.map((skill) => (
           <div
-            key={`${skill}-${tierForSkill(skill, mySkillRatings)}`}
+            key={`${skill}-${tierForSkill(skill, publicSkillRatings)}`}
             style={{
               display: "flex",
               alignItems: "center",
@@ -2236,9 +2236,12 @@ title={`Tier ${cleanTier}`}
             <span>{skill}</span>
             {/* Tier badge (image or NEW) */}
 {(() => {
-  const tier = tierForSkill(skill, mySkillRatings);
+  const tier = tierForSkill(skill, publicSkillRatings); // PUBLIC profiles use publicSkillRatings
   const cleanTier = (tier ?? "NEW").toString().trim().toUpperCase();
-  const src = cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
+
+  // Small badge images live in /public/badges/
+  const src =
+    cleanTier === "NEW" ? null : `/badges/badge_${cleanTier}_96h.png`;
 
   return src ? (
     <img
@@ -2250,6 +2253,10 @@ title={`Tier ${cleanTier}`}
         height: 22,
         objectFit: "contain",
         marginLeft: 2,
+      }}
+      onError={(e) => {
+        console.warn("Badge failed to load:", src);
+        (e.currentTarget as HTMLImageElement).style.display = "none";
       }}
     />
   ) : (
@@ -2269,6 +2276,7 @@ title={`Tier ${cleanTier}`}
     </span>
   );
 })()}
+
 
 
           </div>
