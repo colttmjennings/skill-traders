@@ -1064,15 +1064,21 @@ async function loadThread(tradeId: string) {
 }
 async function updateReviewGate(tradeId: string) {
   const tradeIdUuid = (tradeId ?? "").toString().trim();
-  if (!tradeIdUuid) return;
+
+  // ✅ Guard: don't call RPC with empty id
+  if (!tradeIdUuid) {
+    console.warn("update_review_gate skipped: missing tradeId");
+    return;
+  }
 
   const { error } = await supabase.rpc("update_completed_trade_review_gate", {
-    p_trade_id: tradeIdUuid,
+    p_trade_id: tradeIdUuid, // uuid string
   });
 
   // Non-fatal; don’t break the UI if it fails
-  if (error) console.warn("update_review_gate failed:", error.message);
+  if (error) console.error("update_review_gate failed:", error);
 }
+
 
 
 async function loadCompletedTrade(tradeId: string) {
@@ -1950,24 +1956,42 @@ setTimeout(() => setStatus(""), 1200);
       >
         <span>{skill}</span>
 
-        {/* Badge placeholder */}
-        <span
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.18)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 10,
-            fontWeight: 900,
-            opacity: 0.6,
-          }}
-          title="Tier badge (coming soon)"
-        >
-          NEW
-        </span>
+        {/* Tier badge (image or NEW) */}
+{(() => {
+  const tier = tierForSkill(skill, publicSkillRatings); // "D" | "C" | "B" | "A" | "S" | "NEW"
+  const src = tier === "NEW" ? null : `/badges/badge_${tier}.png`;
+
+  return src ? (
+    <img
+      src={src}
+      alt={`Tier ${tier}`}
+      title={`Tier ${tier}`}
+      style={{
+        width: 26,
+        height: 26,
+        objectFit: "contain",
+        marginLeft: 2,
+      }}
+    />
+  ) : (
+    <span
+      title="New (not enough reviews yet)"
+      style={{
+        fontSize: 11,
+        fontWeight: 900,
+        opacity: 0.7,
+        padding: "2px 8px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background: "rgba(255,255,255,0.06)",
+      }}
+    >
+      NEW
+    </span>
+  );
+})()}
+
+
       </div>
     ))}
   </div>
