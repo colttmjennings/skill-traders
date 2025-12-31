@@ -464,6 +464,32 @@ try {
 } catch {
   setPublicSkillRatings([]);
 }
+// Load THIS user's profile photos (public profile view)
+try {
+  const { data: files, error: fErr } = await supabase.storage
+    .from("profile_photos")
+    .list(`${userId}`, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
+
+  if (fErr) {
+    console.warn("profile_photos list failed:", fErr.message);
+    setPPhotos([]); // or setPublicPhotos([])
+  } else {
+    const urls =
+      (files ?? [])
+        .filter((f) => !!f.name)
+        .map((f) =>
+          supabase.storage
+            .from("profile_photos")
+            .getPublicUrl(`${userId}/${f.name}`).data.publicUrl
+        );
+
+    setPPhotos(urls); // or setPublicPhotos(urls)
+  }
+} catch (e) {
+  console.warn("profile_photos list crash:", e);
+  setPPhotos([]); // or setPublicPhotos([])
+}
+
 
 }
 async function uploadProfilePhoto(file: File) {
@@ -517,6 +543,40 @@ async function uploadProfilePhoto(file: File) {
     setPhotoError(e?.message || "Upload failed.");
   } finally {
     setPhotoUploading(false);
+  }
+}
+
+async function deleteProfilePhoto(publicUrl: string) {
+  if (!sessionUserId) return;
+
+  try {
+    // Convert public URL back into storage path: {uid}/{filename}
+    const marker = `/profile_photos/`;
+    const i = publicUrl.indexOf(marker);
+    if (i === -1) {
+      console.warn("Could not parse storage path from url:", publicUrl);
+      return;
+    }
+
+    // Everything after "/profile_photos/" is the path inside the bucket
+    const path = publicUrl.slice(i + marker.length);
+
+    // Safety: only allow deleting inside MY folder
+    if (!path.startsWith(`${sessionUserId}/`)) {
+      console.warn("Refusing to delete non-owner photo:", path);
+      return;
+    }
+
+    const { error } = await supabase.storage.from("profile_photos").remove([path]);
+    if (error) {
+      console.warn("Delete failed:", error.message);
+      return;
+    }
+
+    // Remove from UI
+    setPPhotos((prev) => prev.filter((u) => u !== publicUrl));
+  } catch (e) {
+    console.warn("deleteProfilePhoto crash:", e);
   }
 }
 
@@ -2281,28 +2341,65 @@ title={`Tier ${cleanTier}`}
   {pPhotos.length > 0 ? (
     <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 10 }}>
       {pPhotos.slice(0, 8).map((url) => (
-        <a
-          key={url}
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          style={{ display: "block" }}
-          title="Open full size"
-        >
-          <img
-            src={url}
-            alt="profile photo"
-            style={{
-              width: 86,
-              height: 86,
-              borderRadius: 12,
-              objectFit: "cover",
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.04)",
-            }}
-          />
-        </a>
-      ))}
+  <div
+    key={url}
+    style={{
+      position: "relative",
+      width: 86,
+      height: 86,
+      borderRadius: 12,
+      overflow: "hidden",
+      border: "1px solid rgba(255,255,255,0.14)",
+      background: "rgba(255,255,255,0.04)",
+    }}
+  >
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title="Open full size"
+      style={{ display: "block", width: "100%", height: "100%" }}
+    >
+      <img
+        src={url}
+        alt="profile photo"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+        }}
+      />
+    </a>
+
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteProfilePhoto(url);
+      }}
+      title="Delete photo"
+      style={{
+        position: "absolute",
+        top: 6,
+        right: 6,
+        width: 26,
+        height: 26,
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background: "rgba(0,0,0,0.55)",
+        color: "white",
+        fontWeight: 900,
+        cursor: "pointer",
+        lineHeight: "24px",
+      }}
+    >
+      ×
+    </button>
+  </div>
+))}
+
     </div>
   ) : (
     <div style={{ marginTop: 10, fontSize: 12, opacity: 0.65 }}>
