@@ -267,8 +267,15 @@ function tierForSkill(skill: string, ratings: any[]) {
   const row = (ratings ?? []).find(
     (r: any) => (r?.skill_key ?? "").toLowerCase() === (skill ?? "").toLowerCase()
   );
-  return row?.tier ?? "NEW";
+
+  const raw = (row?.tier ?? "NEW").toString().trim().toUpperCase();
+
+  // Only allow known tiers
+  if (!["D", "C", "B", "A", "S", "NEW"].includes(raw)) return "NEW";
+
+  return raw;
 }
+
 
 
 type CompletedTradeRow = {
@@ -1959,7 +1966,7 @@ setTimeout(() => setStatus(""), 1200);
         {/* Tier badge (image or NEW) */}
 {(() => {
   const tier = tierForSkill(skill, publicSkillRatings); // "D" | "C" | "B" | "A" | "S" | "NEW"
-  const src = tier === "NEW" ? null : `/badges/badge_${tier}.png`;
+  const src = tier === "NEW" ? null : `/badges/badge_${tier}_96h.png`;
 
   return src ? (
     <img
