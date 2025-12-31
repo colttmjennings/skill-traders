@@ -1066,19 +1066,23 @@ async function loadThread(tradeId: string) {
 async function updateReviewGate(tradeId: string) {
   if (!tradeId) return;
 
-  // Calls your SQL function to update thread_message_count + reviews_enabled
-const tradeIdUuid = (activeThreadTradeId ?? "").toString();
+ // Calls your SQL function to update thread_message_count + reviews_enabled
+const tradeIdUuid = (activeThreadTradeId ?? "").toString().trim();
 
-const { error } = await supabase.rpc(
-  "update_completed_trade_review_gate",
-  {
-    p_trade_id: tradeIdUuid,
-  }
-);
+// ✅ Guard: don't call RPC with empty id
+if (!tradeIdUuid) {
+  console.warn("update_review_gate skipped: missing activeThreadTradeId");
+  return;
+}
+
+const { error } = await supabase.rpc("update_completed_trade_review_gate", {
+  p_trade_id: tradeIdUuid,
+});
 
 if (error) {
   console.error("update_review_gate failed:", error);
 }
+
 
 
 
