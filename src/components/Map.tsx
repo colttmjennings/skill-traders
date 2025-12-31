@@ -1066,10 +1066,21 @@ async function loadThread(tradeId: string) {
 async function updateReviewGate(tradeId: string) {
   if (!tradeId) return;
 
-  // Calls your SQL function (created earlier) to update thread_message_count + reviews_enabled
-  const { error } = await supabase.rpc("update_completed_trade_review_gate", {
-    p_trade_id: tradeId,
-  });
+  // Calls your SQL function to update thread_message_count + reviews_enabled
+const tradeIdUuid = (activeThreadTradeId ?? "").toString();
+
+const { error } = await supabase.rpc(
+  "update_completed_trade_review_gate",
+  {
+    p_trade_id: tradeIdUuid,
+  }
+);
+
+if (error) {
+  console.error("update_review_gate failed:", error);
+}
+
+
 
   // Non-fatal; don’t break the UI if it fails
   if (error) console.warn("update_review_gate failed:", error.message);
