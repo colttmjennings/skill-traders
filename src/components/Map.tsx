@@ -2476,7 +2476,7 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
 
     const { data, error } = await supabase
   .from("profiles")
-  .select("skills, skills_offered")
+  .select("skills")
   .eq("id", revieweeUserId)
   .maybeSingle();
 
@@ -2489,7 +2489,7 @@ if (error) console.warn("load reviewee skills error:", error);
 
 
     // Accept either a string[] or a comma-separated string (defensive)
-    const raw = (data as any)?.skills ?? (data as any)?.skills_offered;
+    const raw = (data as any)?.skills;
     const list: string[] = Array.isArray(raw)
       ? raw
       : typeof raw === "string"
@@ -3530,14 +3530,14 @@ await loadTrades();
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("skills, skills_offered")
+      .select("skills")
       .eq("id", revieweeUserId)
       .maybeSingle();
 
     if (error) console.warn("load reviewee skills error:", error);
 
     // Accept either a string[] or a comma-separated string (defensive)
-    const raw = (data as any)?.skills ?? (data as any)?.skills_offered;
+    const raw = (data as any)?.skills;
     const list: string[] = Array.isArray(raw)
       ? raw
       : typeof raw === "string"
