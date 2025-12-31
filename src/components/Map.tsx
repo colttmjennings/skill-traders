@@ -225,7 +225,6 @@ const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(nu
 
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-const [authReady, setAuthReady] = useState(false);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
 // Right panel mode 
@@ -485,18 +484,6 @@ const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 
 const [showTutorial, setShowTutorial] = useState(false);
 
-useEffect(() => {
-  const sp = new URLSearchParams(window.location.search);
-
-  const modeParam = sp.get("mode");
-  if (modeParam === "post") setCreating(true);
-
-  const loginParam = sp.get("login");
-  if (loginParam === "1") {
-    setAuthOpen(true);
-    setAuthSent(false);
-  }
-}, []);
 
 useEffect(() => {
   if (typeof window === "undefined") return;
@@ -723,7 +710,10 @@ useEffect(() => {
       setAuthOpen(false);
       setAuthSent(false);
 
-      // IMPORTANT: pull latest data as soon as session exists
+      // ✅ Pull latest data as soon as session exists (rehydrate-safe)
+      try { await loadMyProfile(); } catch {}
+      try { await loadTrades(); } catch {}
+      try { await loadInbox(); } catch {}
     } else {
       // signed out / no session
       setInbox([]);
@@ -751,18 +741,6 @@ useEffect(() => {
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
-
-// 0.1) After auth is ready, load core app data (prevents "email/no pins/loading" state)
-useEffect(() => {
-  if (!sessionUserId) return;
-
-  (async () => {
-    try { await loadMyProfile(); } catch {}
-    try { await loadTrades(); } catch {}
-    try { await loadInbox(); } catch {}
-  })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [sessionUserId]);
 
 
   // 1) Init map once
@@ -1354,7 +1332,7 @@ popup.on("open", () => {
 }
 
 
-    if (!sessionEmail) {
+    if (!sessionUserId) {
   setPendingMessageTradeId(t.id);
   setAuthOpen(true);
   setAuthSent(false);
@@ -1393,7 +1371,7 @@ marker.setLngLat([lng, lat]).setPopup(popup).addTo(map);
     }
 
     // Require login to post
-if (!sessionEmail) {
+if (!sessionUserId) {
   setAuthOpen(true);
   setAuthSent(false);
   return;
@@ -1852,7 +1830,7 @@ setTimeout(() => setStatus(""), 1200);
 
   <button
     onClick={() => {
-      if (!sessionEmail) {
+      if (!sessionUserId) {
         setAuthOpen(true);
         setAuthSent(false);
         return;
@@ -1985,7 +1963,7 @@ setTimeout(() => setStatus(""), 1200);
 
   </div>
 </div>
-    {!sessionEmail ? (
+    {!sessionUserId ? (
       <div style={{ marginTop: 10, opacity: 0.85, fontSize: 13 }}>
         Log in to edit your profile.
       </div>
@@ -2288,7 +2266,7 @@ setTimeout(() => setStatus(""), 1200);
 
     <button
       onClick={() => {
-        if (!sessionEmail) {
+        if (!sessionUserId) {
           setAuthOpen(true);
           setAuthSent(false);
           return;
@@ -2310,7 +2288,7 @@ setTimeout(() => setStatus(""), 1200);
     </button>
   </div>
 
-  {!sessionEmail ? (
+  {!sessionUserId ? (
     <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
       Log in to view messages.
     </div>
@@ -3205,7 +3183,7 @@ await loadTrades();
           onClick={sendMessage}
           disabled={
          sendingMsg ||
-         !sessionEmail ||
+         !sessionUserId||
          !msgBody.trim() ||
          !selectedTrade
 }
@@ -3220,7 +3198,7 @@ await loadTrades();
             fontWeight: 900,
             cursor:
              sendingMsg ||
-            !sessionEmail ||
+            !sessionUserId ||
             !msgBody.trim() ||
             !selectedTrade
             ? "not-allowed"
@@ -3228,7 +3206,7 @@ await loadTrades();
 
             opacity:
             sendingMsg ||
-            !sessionEmail ||
+            !sessionUserId ||
             !msgBody.trim() ||
             !selectedTrade
             ? 0.6
