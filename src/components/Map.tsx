@@ -2156,6 +2156,49 @@ title={`Tier ${cleanTier}`}
         >
           {profileSaving ? "Saving..." : "Save Profile"}
         </button>
+        {/* Badge explanation */}
+<div
+  style={{
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.04)",
+  }}
+>
+  <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 6 }}>
+    Skill Badges
+  </div>
+
+  <div style={{ fontSize: 12, opacity: 0.85, lineHeight: 1.4, marginBottom: 10 }}>
+    Reviews earn badges on each skill you list. As people review your work,
+    your skills progress from <b>D</b> to <b>S</b> tier — helping others
+    quickly understand your experience and reliability.
+  </div>
+
+  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+    {["D", "C", "B", "A", "S"].map((tier) => (
+      <div
+        key={tier}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 800,
+        }}
+      >
+        <img
+          src={`/badges/badge_${tier}.png`}
+          alt={`Tier ${tier}`}
+          style={{ width: 40, height: 40, objectFit: "contain" }}
+        />
+        <span>Tier {tier}</span>
+      </div>
+    ))}
+  </div>
+</div>
+
       </div>
     )}
   </div>
