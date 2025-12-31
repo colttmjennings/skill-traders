@@ -263,6 +263,13 @@ type SkillRatingRow = {
 };
 
 const [publicSkillRatings, setPublicSkillRatings] = useState<SkillRatingRow[]>([]);
+function tierForSkill(skill: string, ratings: any[]) {
+  const row = (ratings ?? []).find(
+    (r: any) => (r?.skill_key ?? "").toLowerCase() === (skill ?? "").toLowerCase()
+  );
+  return row?.tier ?? "NEW";
+}
+
 
 type CompletedTradeRow = {
   trade_id: string;
@@ -2175,16 +2182,24 @@ setTimeout(() => setStatus(""), 1200);
             }}
           >
             <span>{skill}</span>
-            <span
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: "50%",
-                background: "rgba(255,255,255,0.18)",
-                opacity: 0.6,
-              }}
-              title="Tier badge (coming soon)"
-            />
+            <div
+  style={{
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    background: "rgba(255,255,255,0.18)",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 10,
+    fontWeight: 900,
+    opacity: 0.9,
+  }}
+  title={`Tier ${tierForSkill(skill, publicSkillRatings)}`}
+>
+  {tierForSkill(skill, publicSkillRatings)}
+</div>
+
           </div>
         ))}
       </div>
