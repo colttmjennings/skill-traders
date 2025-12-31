@@ -359,6 +359,11 @@ const [pBirthdate, setPBirthdate] = useState("");
 const [pBio, setPBio] = useState("");
 const [pAvatarUrl, setPAvatarUrl] = useState<string | null>(null);
 const [pSkillsText, setPSkillsText] = useState(""); // comma-separated
+// Profile photos (portfolio)
+const [pPhotos, setPPhotos] = useState<string[]>([]);
+const [photoUploading, setPhotoUploading] = useState(false);
+const [photoError, setPhotoError] = useState<string>("");
+
 
 async function loadMyProfile() {
   if (!sessionUserId) return;
@@ -386,6 +391,32 @@ async function loadMyProfile() {
     setPBio(row.bio ?? "");
     setPAvatarUrl(row.avatar_url ?? null);
     setPSkillsText((row.skills ?? []).join(", "));
+        // Load my profile photos from storage
+    try {
+      const { data: files, error: fErr } = await supabase.storage
+        .from("profile_photos")
+        .list(`${sessionUserId}`, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
+
+      if (fErr) {
+        console.warn("profile_photos list failed:", fErr.message);
+        setPPhotos([]);
+      } else {
+        const urls =
+          (files ?? [])
+            .filter((f) => !!f.name)
+            .map((f) =>
+              supabase.storage
+                .from("profile_photos")
+                .getPublicUrl(`${sessionUserId}/${f.name}`).data.publicUrl
+            );
+
+        setPPhotos(urls);
+      }
+    } catch (e) {
+      console.warn("profile_photos list crash:", e);
+      setPPhotos([]);
+    }
+
     // Load MY skill rating tiers (for my profile view)
 try {
   const { data: myRatings, error: myRErr } = await supabase
@@ -435,6 +466,60 @@ try {
 }
 
 }
+async function uploadProfilePhoto(file: File) {
+  if (!sessionUserId) return;
+
+  setPhotoUploading(true);
+  setPhotoError("");
+
+  try {
+    // basic guard
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please upload an image file.");
+      return;
+    }
+
+    // optional size guard (10MB)
+    const MAX_MB = 10;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setPhotoError(`Image too large. Max ${MAX_MB}MB.`);
+      return;
+    }
+
+    // unique filename (keeps extension)
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const filename = `${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+
+    // IMPORTANT: store in user's folder (matches your policy)
+    const path = `${sessionUserId}/${filename}`;
+
+    // ✅ THIS is the actual upload
+    const { error: upErr } = await supabase.storage
+      .from("profile_photos")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+    if (upErr) {
+      setPhotoError(upErr.message);
+      return;
+    }
+
+    // ✅ Add to UI immediately
+    const publicUrl = supabase.storage
+      .from("profile_photos")
+      .getPublicUrl(path).data.publicUrl;
+
+    setPPhotos((prev) => [publicUrl, ...prev]);
+  } catch (e: any) {
+    setPhotoError(e?.message || "Upload failed.");
+  } finally {
+    setPhotoUploading(false);
+  }
+}
+
 
 
 async function saveMyProfile() {
@@ -2143,6 +2228,88 @@ title={`Tier ${cleanTier}`}
             resize: "vertical",
           }}
         />
+
+{/* Profile Gallery */}
+<div
+  style={{
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.04)",
+  }}
+>
+  <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 6 }}>
+    Profile Gallery
+  </div>
+
+  <div style={{ fontSize: 12, opacity: 0.78, marginBottom: 10, lineHeight: 1.35 }}>
+    Post photos of finished work from trades or examples of your skill capabilities. These will be visible on your public profile.
+  </div>
+
+  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+    <label
+      style={{
+        ...S.buttonSecondary,
+        padding: "10px 12px",
+        cursor: photoUploading ? "not-allowed" : "pointer",
+        opacity: photoUploading ? 0.7 : 1,
+      }}
+    >
+      {photoUploading ? "Uploading..." : "Add Photos"}
+      <input
+        type="file"
+        accept="image/*"
+        disabled={photoUploading}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          uploadProfilePhoto(f);
+          e.currentTarget.value = ""; // allow re-upload same file
+        }}
+      />
+    </label>
+
+    {photoError ? (
+      <div style={{ fontSize: 12, color: "#ff7b7b", fontWeight: 800 }}>
+        {photoError}
+      </div>
+    ) : null}
+  </div>
+
+  {pPhotos.length > 0 ? (
+    <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 10 }}>
+      {pPhotos.slice(0, 8).map((url) => (
+        <a
+          key={url}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: "block" }}
+          title="Open full size"
+        >
+          <img
+            src={url}
+            alt="profile photo"
+            style={{
+              width: 86,
+              height: 86,
+              borderRadius: 12,
+              objectFit: "cover",
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.04)",
+            }}
+          />
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.65 }}>
+      No photos yet.
+    </div>
+  )}
+</div>
 
         <button
           onClick={saveMyProfile}
