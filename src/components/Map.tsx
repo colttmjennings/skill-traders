@@ -725,15 +725,20 @@ useEffect(() => {
   });
 
   const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-    // Only clear state on an actual sign-out event
-    if (event === "SIGNED_OUT") {
-      syncSession(null);
-      return;
-    }
+  const uid = session?.user?.id ?? null;
+  const email = session?.user?.email ?? null;
+  const exp = (session as any)?.expires_at ?? null;
 
-    // SIGNED_IN / TOKEN_REFRESHED / USER_UPDATED etc.
-    syncSession(session ?? null);
-  });
+  console.log("[AUTH]", event, { uid, email, exp });
+
+  if (event === "SIGNED_OUT") {
+    syncSession(null);
+    return;
+  }
+
+  syncSession(session ?? null);
+});
+
 
   return () => {
     alive = false;
