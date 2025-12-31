@@ -241,14 +241,6 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [selectedTradeId]);
 
-// 3) When a conversation thread is opened, load its completed_trade row (if any)
-useEffect(() => {
-  if (!activeThreadTradeId) return;
-  loadCompletedTrade(activeThreadTradeId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [activeThreadTradeId]);
-
-
 
 /* Profile state + load/save logic */
 type ProfileRow = {
@@ -1064,31 +1056,17 @@ async function loadThread(tradeId: string) {
   }
 }
 async function updateReviewGate(tradeId: string) {
-  if (!tradeId) return;
+  const tradeIdUuid = (tradeId ?? "").toString().trim();
+  if (!tradeIdUuid) return;
 
- // Calls your SQL function to update thread_message_count + reviews_enabled
-const tradeIdUuid = (activeThreadTradeId ?? "").toString().trim();
-
-// ✅ Guard: don't call RPC with empty id
-if (!tradeIdUuid) {
-  console.warn("update_review_gate skipped: missing activeThreadTradeId");
-  return;
-}
-
-const { error } = await supabase.rpc("update_completed_trade_review_gate", {
-  p_trade_id: tradeIdUuid,
-});
-
-if (error) {
-  console.error("update_review_gate failed:", error);
-}
-
-
-
+  const { error } = await supabase.rpc("update_completed_trade_review_gate", {
+    p_trade_id: tradeIdUuid,
+  });
 
   // Non-fatal; don’t break the UI if it fails
   if (error) console.warn("update_review_gate failed:", error.message);
 }
+
 
 async function loadCompletedTrade(tradeId: string) {
   const { data, error } = await supabase
@@ -3576,6 +3554,18 @@ if (!list.length) {
     setInboxOpen(false);
   }
 }}
+style={{
+    flexShrink: 0,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.10)",
+    color: "white",
+    fontWeight: 900,
+    cursor: "pointer",
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  }}
       >
         Leave Review
       </button>
