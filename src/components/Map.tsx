@@ -721,8 +721,15 @@ useEffect(() => {
   };
 
   supabase.auth.getSession().then(({ data }) => {
-    syncSession(data.session ?? null);
+  const s = data.session ?? null;
+  console.log("[AUTH:getSession]", {
+    uid: s?.user?.id ?? null,
+    email: s?.user?.email ?? null,
+    exp: (s as any)?.expires_at ?? null,
   });
+  syncSession(s);
+});
+
 
   const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
   const uid = session?.user?.id ?? null;
@@ -2468,12 +2475,18 @@ const otherLabel = otherUserId ? `@${usernamesById[otherUserId] ?? "loading…"}
     }
 
     const { data, error } = await supabase
-      .from("profiles")
-      .select("skills, skills_offered")
-      .eq("id", revieweeUserId)
-      .maybeSingle();
+  .from("profiles")
+  .select("skills, skills_offered")
+  .eq("id", revieweeUserId)
+  .maybeSingle();
 
-    if (error) console.warn("load reviewee skills error:", error);
+console.log("[REVIEWEE PROFILE RAW]", { revieweeUserId, data, error });
+console.log("[REVIEWEE SKILLS RAW]", {
+  raw: (data as any)?.skills ?? (data as any)?.skills_offered,
+});
+
+if (error) console.warn("load reviewee skills error:", error);
+
 
     // Accept either a string[] or a comma-separated string (defensive)
     const raw = (data as any)?.skills ?? (data as any)?.skills_offered;
