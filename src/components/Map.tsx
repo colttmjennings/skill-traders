@@ -252,6 +252,7 @@ useEffect(() => {
 type ProfileRow = {
   id: string;
   username: string | null;
+    is_verified: boolean | null;
   first_name: string | null;
   last_name: string | null;
   birthdate: string | null;
@@ -451,7 +452,7 @@ async function loadPublicProfile(userId: string) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, bio, avatar_url, skills")
+    .select("id, username, bio, avatar_url, skills, is_verified")
     .eq("id", userId)
     .single();
 
@@ -2530,9 +2531,26 @@ title={`Tier ${cleanTier}`}
     }}
   >
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div style={{ fontWeight: 900, fontSize: 15 }}>
-        @{publicProfile.username}
-      </div>
+      <div style={{ fontWeight: 900, fontSize: 15, display: "flex", gap: 6, alignItems: "center" }}>
+  @{publicProfile.username}
+
+  {publicProfile.is_verified && (
+    <span
+      title="Verified Trader"
+      style={{
+        fontSize: 11,
+        padding: "2px 8px",
+        borderRadius: 999,
+        background: "#f5c542",
+        color: "#1a1400",
+        fontWeight: 900,
+      }}
+    >
+      ✔ Verified
+    </span>
+  )}
+</div>
+
 
       <button
         onClick={() => setPanelView("main")}
