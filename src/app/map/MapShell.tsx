@@ -1,7 +1,7 @@
 "use client";
 
 import Map from "@/components/Map";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Props = {
@@ -11,25 +11,75 @@ type Props = {
 
 export default function MapShell({ mode, login }: Props) {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
+const hydrateSeq = useRef(0);
+
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSessionEmail(data.session?.user?.email ?? null);
+  let mounted = true;
+
+  const hydrate = async (session: any | null) => {
+    const seq = ++hydrateSeq.current;
+
+    const email = session?.user?.email ?? null;
+    const userId = session?.user?.id ?? null;
+
+    if (!mounted) return;
+
+    setSessionEmail(email);
+
+    // logged out
+    if (!userId) {
+      setSessionLabel(null);
+      setSessionAvatarUrl(null);
+      return;
+    }
+
+    // show loading label (never email)
+    setSessionLabel((prev) => (prev && prev.startsWith("@") ? prev : "@loading"));
+    setSessionAvatarUrl(null);
+
+    const { data: prof, error } = await supabase
+      .from("profiles")
+      .select("username, avatar_url")
+      .eq("id", userId)
+      .single();
+
+    if (!mounted || seq !== hydrateSeq.current) return;
+
+    const u = prof?.username ? `@${prof.username}` : null;
+
+    setSessionLabel((prev) => {
+      if (u) return u;
+      if (prev && prev.startsWith("@") && prev !== "@loading") return prev;
+      return "@unknown";
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSessionEmail(session?.user?.email ?? null);
-    });
+    setSessionAvatarUrl(prof?.avatar_url ?? null);
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
+    if (error) console.warn("[MapShell] profile load error:", error.message);
+  };
+
+  supabase.auth.getSession().then(({ data }) => hydrate(data.session ?? null));
+
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    hydrate(session ?? null);
+  });
+
+  return () => {
+    mounted = false;
+    authListener.subscription.unsubscribe();
+  };
+}, []);
+
 
   async function logout() {
-    await supabase.auth.signOut();
-    setSessionEmail(null);
-  }
+  await supabase.auth.signOut();
+  setSessionEmail(null);
+  setSessionLabel(null);
+  setSessionAvatarUrl(null);
+}
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -50,17 +100,7 @@ export default function MapShell({ mode, login }: Props) {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <img
-  src="/logo.png"
-  alt="Skill Traders"
-  style={{
-    height: 28,
-    width: 28,
-    display: "block",
-    objectFit: "contain",
-  }}
-/>
-
+          <div style={{ fontWeight: 900 }}>Skill Traders</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -68,7 +108,7 @@ export default function MapShell({ mode, login }: Props) {
             <>
               <div style={{ fontSize: 13, opacity: 0.9 }}>
                 <span style={{ opacity: 0.8 }}>Signed in:</span>{" "}
-                <span style={{ fontWeight: 800 }}>{sessionEmail}</span>
+                <span style={{ fontWeight: 800 }}>{sessionLabel ?? ""}</span>
               </div>
 
               <button
