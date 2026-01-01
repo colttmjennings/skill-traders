@@ -31,14 +31,29 @@ if (userId) {
     .single();
 
   const u = prof?.username ? `@${prof.username}` : null;
-  setSessionLabel(u || data.session?.user?.email || null);
+
+  setSessionLabel((prev) => {
+    // If we successfully got a username, always use it
+    if (u) return u;
+
+    // If we already had a username displayed, never downgrade to email
+    if (prev && prev.startsWith("@")) return prev;
+
+    // Otherwise, fallback to email (only if we truly never had username yet)
+    return data.session?.user?.email ?? null;
+  });
+
   setSessionAvatarUrl(prof?.avatar_url ?? null);
 } else {
-  setSessionLabel(data.session?.user?.email ?? null);
+  setSessionLabel((prev) => {
+    // If we already had a username displayed, never downgrade to email
+    if (prev && prev.startsWith("@")) return prev;
+
+    return data.session?.user?.email ?? null;
+  });
+
   setSessionAvatarUrl(null);
 }
-
-
       
     });
 
@@ -55,14 +70,30 @@ if (userId) {
     .single();
 
   const u = prof?.username ? `@${prof.username}` : null;
-  setSessionLabel(u || session?.user?.email || null);
+  setSessionLabel((prev) => {
+  // If we successfully got a username, always use it
+  if (u) return u;
+
+  // If we already had a username displayed, never downgrade to email
+  if (prev && prev.startsWith("@")) return prev;
+
+  // Otherwise, fallback to email (only if we truly never had username yet)
+  return session?.user?.email ?? null;
+});
+
   setSessionAvatarUrl(prof?.avatar_url ?? null);
 
 } else {
-  setSessionLabel(session?.user?.email ?? null);
-  setSessionAvatarUrl(null);
+  setSessionLabel((prev) => {
+    // If we already had a username displayed, never downgrade to email
+    if (prev && prev.startsWith("@")) return prev;
 
+    return session?.user?.email ?? null;
+  });
+
+  setSessionAvatarUrl(null);
 }
+
 
 
     });
