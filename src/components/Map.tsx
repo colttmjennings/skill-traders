@@ -361,6 +361,8 @@ const [pAvatarUrl, setPAvatarUrl] = useState<string | null>(null);
 const [pSkillsText, setPSkillsText] = useState(""); // comma-separated
 // Profile photos (portfolio)
 const [pPhotos, setPPhotos] = useState<string[]>([]);
+const [publicPhotos, setPublicPhotos] = useState<string[]>([]);
+const [publicPhotosLoading, setPublicPhotosLoading] = useState(false);
 const [photoUploading, setPhotoUploading] = useState(false);
 const [photoError, setPhotoError] = useState<string>("");
 
@@ -464,7 +466,7 @@ try {
 } catch {
   setPublicSkillRatings([]);
 }
-// Load THIS user's profile photos (public profile view)
+setPublicPhotosLoading(true);
 try {
   const { data: files, error: fErr } = await supabase.storage
     .from("profile_photos")
@@ -472,7 +474,7 @@ try {
 
   if (fErr) {
     console.warn("profile_photos list failed:", fErr.message);
-    setPPhotos([]); // or setPublicPhotos([])
+    setPublicPhotos([]);
   } else {
     const urls =
       (files ?? [])
@@ -483,11 +485,13 @@ try {
             .getPublicUrl(`${userId}/${f.name}`).data.publicUrl
         );
 
-    setPPhotos(urls); // or setPublicPhotos(urls)
+    setPublicPhotos(urls);
   }
 } catch (e) {
   console.warn("profile_photos list crash:", e);
-  setPPhotos([]); // or setPublicPhotos([])
+  setPublicPhotos([]);
+} finally {
+  setPublicPhotosLoading(false);
 }
 
 
