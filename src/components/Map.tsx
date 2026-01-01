@@ -2643,10 +2643,6 @@ title={`Tier ${cleanTier}`}
   </div>
 ) : null}
 
-<div style={{ marginTop: 10, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)", fontSize: 12 }}>
-  DEBUG Gallery vars → loading: {String(publicPhotosLoading)} • count: {publicPhotos.length}
-</div>
-
 {/* Public Profile Gallery */}
 <div style={{ marginTop: 12 }}>
   <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
