@@ -40,7 +40,8 @@ if (userId) {
     if (prev && prev.startsWith("@")) return prev;
 
     // Otherwise, fallback to email (only if we truly never had username yet)
-    return data.session?.user?.email ?? null;
+    return prev && prev.startsWith("@") ? prev : "@loading";
+
   });
 
   setSessionAvatarUrl(prof?.avatar_url ?? null);
@@ -49,7 +50,8 @@ if (userId) {
     // If we already had a username displayed, never downgrade to email
     if (prev && prev.startsWith("@")) return prev;
 
-    return data.session?.user?.email ?? null;
+    return prev && prev.startsWith("@") ? prev : "@loading";
+
   });
 
   setSessionAvatarUrl(null);
@@ -78,7 +80,8 @@ if (userId) {
   if (prev && prev.startsWith("@")) return prev;
 
   // Otherwise, fallback to email (only if we truly never had username yet)
-  return session?.user?.email ?? null;
+  return prev && prev.startsWith("@") ? prev : "@loading";
+
 });
 
   setSessionAvatarUrl(prof?.avatar_url ?? null);
@@ -88,7 +91,8 @@ if (userId) {
     // If we already had a username displayed, never downgrade to email
     if (prev && prev.startsWith("@")) return prev;
 
-    return session?.user?.email ?? null;
+    return prev && prev.startsWith("@") ? prev : "@loading";
+
   });
 
   setSessionAvatarUrl(null);
