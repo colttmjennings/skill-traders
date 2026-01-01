@@ -2643,6 +2643,55 @@ title={`Tier ${cleanTier}`}
   </div>
 ) : null}
 
+<div style={{ marginTop: 10, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)", fontSize: 12 }}>
+  DEBUG Gallery vars → loading: {String(publicPhotosLoading)} • count: {publicPhotos.length}
+</div>
+
+{/* Public Profile Gallery */}
+<div style={{ marginTop: 12 }}>
+  <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
+    Profile Gallery
+  </div>
+
+  {publicPhotosLoading ? (
+    <div style={{ fontSize: 12, opacity: 0.65 }}>Loading photos…</div>
+  ) : publicPhotos.length > 0 ? (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+      {publicPhotos.slice(0, 8).map((url) => (
+        <a
+          key={url}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          title="Open full size"
+          style={{
+            display: "block",
+            width: 86,
+            height: 86,
+            borderRadius: 12,
+            overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        >
+          <img
+            src={url}
+            alt="profile photo"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div style={{ fontSize: 12, opacity: 0.65 }}>No photos yet.</div>
+  )}
+</div>
+
     </div>
   </div>
 )}
