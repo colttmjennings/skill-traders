@@ -555,6 +555,61 @@ async function uploadProfilePhoto(file: File) {
     setPhotoUploading(false);
   }
 }
+async function submitReportFeedback() {
+  if (!publicProfile?.id) return;
+
+  const reason = reportReason.trim();
+  const details = reportDetails.trim();
+
+  if (!reason) {
+    setReportError("Please enter a reason.");
+    return;
+  }
+
+  setReportSending(true);
+  setReportError("");
+
+  try {
+    const me = sessionUserId ?? null;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_user_id: me,
+      reporter_email: null,
+      reported_user_id: publicProfile.id,
+      reason,
+      details,
+      page: "public_profile",
+      status: "new",
+    });
+
+    if (error) {
+      setReportError(error.message);
+      return;
+    }
+
+    const subject = encodeURIComponent("Skill Traders — Report/Feedback");
+    const body = encodeURIComponent(
+      [
+        `Reported user: @${publicProfile.username ?? "(unknown)"} (${publicProfile.id})`,
+        me ? `Reporter user_id: ${me}` : "Reporter: anonymous",
+        "",
+        `Reason: ${reason}`,
+        "",
+        `Details:`,
+        details || "(none)",
+      ].join("\n")
+    );
+
+    window.location.href =
+      `mailto:admin@skill-traders.com?subject=${subject}&body=${body}`;
+
+    setReportOpen(false);
+    setReportReason("");
+    setReportDetails("");
+  } finally {
+    setReportSending(false);
+  }
+}
 
 async function deleteProfilePhoto(publicUrl: string) {
   if (!sessionUserId) return;
@@ -2509,6 +2564,142 @@ title={`Tier ${cleanTier}`}
         Close
       </button>
     </div>
+        <button
+      onClick={() => {
+        setReportOpen(true);
+        setReportError("");
+        setReportReason("");
+        setReportDetails("");
+      }}
+      style={{
+        marginTop: 10,
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.06)",
+        color: "white",
+        fontWeight: 900,
+        cursor: "pointer",
+        fontSize: 13,
+      }}
+    >
+      Report/Feedback
+    </button>
+
+{reportOpen && (
+  <div
+    onClick={() => setReportOpen(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 16,
+      zIndex: 9999,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "min(520px, 95vw)",
+        borderRadius: 16,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "rgba(10,16,26,0.98)",
+        padding: 14,
+      }}
+    >
+      <div style={{ fontWeight: 900, fontSize: 16 }}>
+        Report/Feedback for @{publicProfile?.username ?? "user"}
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+        What’s the issue? (required)
+      </div>
+      <input
+        value={reportReason}
+        onChange={(e) => setReportReason(e.target.value)}
+        placeholder="Example: Spam, unsafe content, harassment, fake profile..."
+        style={{
+          marginTop: 6,
+          width: "100%",
+          padding: 10,
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.06)",
+          color: "white",
+          outline: "none",
+        }}
+      />
+
+      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+        Extra details (optional)
+      </div>
+      <textarea
+        value={reportDetails}
+        onChange={(e) => setReportDetails(e.target.value)}
+        placeholder="Add any context that helps."
+        rows={5}
+        style={{
+          marginTop: 6,
+          width: "100%",
+          padding: 10,
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.06)",
+          color: "white",
+          outline: "none",
+          resize: "vertical",
+        }}
+      />
+
+      {!!reportError && (
+        <div style={{ marginTop: 10, color: "#ffb4b4", fontWeight: 800 }}>
+          {reportError}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <button
+          onClick={() => setReportOpen(false)}
+          style={{
+            flex: 1,
+            padding: 10,
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "transparent",
+            color: "white",
+            fontWeight: 900,
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={submitReportFeedback}
+          disabled={reportSending}
+          style={{
+            flex: 1,
+            padding: 10,
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: reportSending ? "rgba(27,191,138,0.55)" : "#1bbf8a",
+            color: "#06101a",
+            fontWeight: 900,
+            cursor: reportSending ? "not-allowed" : "pointer",
+            opacity: reportSending ? 0.8 : 1,
+          }}
+        >
+          {reportSending ? "Sending..." : "Submit"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
     {publicProfile.avatar_url && (
       <img
