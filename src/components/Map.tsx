@@ -587,21 +587,7 @@ async function submitReportFeedback() {
       return;
     }
 
-    const subject = encodeURIComponent("Skill Traders — Report/Feedback");
-    const body = encodeURIComponent(
-      [
-        `Reported user: @${publicProfile.username ?? "(unknown)"} (${publicProfile.id})`,
-        me ? `Reporter user_id: ${me}` : "Reporter: anonymous",
-        "",
-        `Reason: ${reason}`,
-        "",
-        `Details:`,
-        details || "(none)",
-      ].join("\n")
-    );
-
-    window.location.href =
-      `mailto:admin@skill-traders.com?subject=${subject}&body=${body}`;
+        alert("Report sent. Thank you — we’ll review it.");
 
     setReportOpen(false);
     setReportReason("");
