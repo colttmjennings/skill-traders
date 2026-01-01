@@ -230,6 +230,12 @@ const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
 
+// Report / Feedback (public profile)
+const [reportOpen, setReportOpen] = useState(false);
+const [reportReason, setReportReason] = useState("");
+const [reportDetails, setReportDetails] = useState("");
+const [reportSending, setReportSending] = useState(false);
+const [reportError, setReportError] = useState("");
 
 // 2) When a pin is selected, load its completed_trade row (if any)
 useEffect(() => {
