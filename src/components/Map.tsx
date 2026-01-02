@@ -17,6 +17,7 @@ type Trade = {
   user_id?: string | null;
   status?: "active" | "completed";
   username?: string | null;
+  is_verified?: boolean | null;
 };
 
 const BRAND = {
@@ -372,7 +373,8 @@ const [publicPhotos, setPublicPhotos] = useState<string[]>([]);
 const [publicPhotosLoading, setPublicPhotosLoading] = useState(false);
 const [photoUploading, setPhotoUploading] = useState(false);
 const [photoError, setPhotoError] = useState<string>("");
-
+// Verification
+const [isVerified, setIsVerified] = useState(false);
 
 async function loadMyProfile() {
   if (!sessionUserId) return;
@@ -382,7 +384,7 @@ async function loadMyProfile() {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, first_name, last_name, birthdate, avatar_url, skills, bio")
+      .select("id, username, first_name, last_name, birthdate, avatar_url, skills, bio, is_verified")
       .eq("id", sessionUserId)
       .single();
 
@@ -390,6 +392,8 @@ async function loadMyProfile() {
       setProfileError(error.message);
       return;
     }
+    setIsVerified(!!(data as any)?.is_verified);
+
 
     const row = data as unknown as ProfileRow;
 
@@ -1442,6 +1446,8 @@ useEffect(() => {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
+    console.log("[PIN VERIFY CHECK]", filteredTrades.map(t => ({ id: t.id, user_id: t.user_id, is_verified: (t as any).is_verified })));
+
     filteredTrades.forEach((t) => {
       if (t.lng == null || t.lat == null) return;
 if (!isValidCoord(t.lng, t.lat)) return;
@@ -1455,6 +1461,9 @@ el.style.cursor = "pointer";
 // Choose color by type
 const fill = t.type === "request" ? BRAND.request : BRAND.offer;
 
+// ✅ Verified inner dot color
+const center = t.is_verified ? "#f5c84c" : "white";
+
 // Upright SVG pin (no rotation = no lean)
 el.innerHTML = `
 <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
@@ -1464,7 +1473,7 @@ el.innerHTML = `
     stroke="${BRAND.pinBorder}"
     stroke-width="1.8"
   />
-  <circle cx="12" cy="10" r="3.6" fill="white" />
+  <circle cx="12" cy="10" r="3.6" fill="${center}" />
 </svg>
 `;
 
@@ -2136,12 +2145,29 @@ setTimeout(() => setStatus(""), 1200);
   </div>
 
   <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.4 }}>
-    <div>
-      <span style={{ opacity: 0.75 }}>Username:</span>{" "}
-      <span style={{ fontWeight: 800 }}>
-        {pUsername?.trim() ? `@${pUsername.trim()}` : "—"}
-      </span>
-    </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+  <span style={{ opacity: 0.75 }}>Username:</span>
+
+  <span style={{ fontWeight: 800 }}>
+    {pUsername?.trim() ? `@${pUsername.trim()}` : "—"}
+  </span>
+
+  {isVerified && (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 900,
+        padding: "2px 8px",
+        borderRadius: 999,
+        background: "#f5c84c",
+        color: "#06101a",
+      }}
+    >
+      ✓ Verified
+    </span>
+  )}
+</div>
+
 
     <div style={{ marginTop: 6 }}>
       <span style={{ opacity: 0.75 }}>Bio:</span>{" "}
