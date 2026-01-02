@@ -17,7 +17,7 @@ type Trade = {
   user_id?: string | null;
   status?: "active" | "completed";
   username?: string | null;
-  is_verified?: boolean | null;
+  is_verified?: boolean;
 };
 
 const BRAND = {
@@ -1389,24 +1389,30 @@ const ids = Array.from(new Set(clean.map((t) => t.user_id).filter(Boolean))) as 
 
 if (ids.length) {
   const { data: profs } = await supabase
-    .from("profiles")
-    .select("id, username")
-    .in("id", ids);
+  .from("profiles")
+  .select("id, username, is_verified")
+  .in("id", ids);
 
-  const map: Record<string, string> = {};
-  (profs ?? []).forEach((p: any) => {
-    if (p?.id && p?.username) map[p.id] = p.username;
-  });
+const nameMap: Record<string, string> = {};
+const verifiedMap: Record<string, boolean> = {};
 
-  setUsernamesById(map);
+(profs ?? []).forEach((p: any) => {
+  if (p?.id) {
+    if (p?.username) nameMap[p.id] = p.username;
+    verifiedMap[p.id] = !!p?.is_verified;
+  }
+});
 
-  // Attach username onto each trade for easy rendering
-  const withNames = clean.map((t) => ({
-    ...t,
-    username: t.user_id ? map[t.user_id] ?? null : null,
-  }));
+setUsernamesById(nameMap);
 
-  setTrades(withNames as any);
+// Attach username + is_verified onto each trade for easy rendering
+const withNames = clean.map((t) => ({
+  ...t,
+  username: t.user_id ? nameMap[t.user_id] ?? null : null,
+  is_verified: t.user_id ? verifiedMap[t.user_id] ?? false : false,
+}));
+
+setTrades(withNames as any);
 } else {
   setTrades(clean);
 }
