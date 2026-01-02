@@ -208,7 +208,7 @@ if (userId) {
   <div style={{ fontSize: 13, opacity: 0.9, textAlign: "left" }}>
     <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 800 }}>Signed in</div>
     <div style={{ fontSize: 13, fontWeight: 900, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-      {sessionLabel ?? sessionEmail}
+      {sessionLabel ?? "@loading"}
 
     </div>
   </div>

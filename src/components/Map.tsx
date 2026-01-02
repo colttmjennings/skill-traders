@@ -921,19 +921,18 @@ useEffect(() => {
   let alive = true;
 
   const syncSession = async (session: any | null) => {
-    const email = session?.user?.email ?? null;
     const uid = session?.user?.id ?? null;
 
     if (!alive) return;
 
-    setSessionEmail(email);
-    setSessionUserId(uid);
+    setSessionEmail(null); // ✅ never keep email in Map.tsx state
+setSessionUserId(uid);
 
-    if (uid) {
-      // close auth UI
-      if (email) setAuthEmail(email);
-      setAuthOpen(false);
-      setAuthSent(false);
+if (uid) {
+  // close auth UI
+  // ✅ do NOT setAuthEmail from session (prevents email bleeding into username UI)
+  setAuthOpen(false);
+  setAuthSent(false);
 
       // ✅ Pull latest data as soon as session exists (rehydrate-safe)
       try { await loadMyProfile(); } catch {}
