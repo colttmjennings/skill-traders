@@ -373,6 +373,38 @@ const [publicPhotos, setPublicPhotos] = useState<string[]>([]);
 const [publicPhotosLoading, setPublicPhotosLoading] = useState(false);
 const [photoUploading, setPhotoUploading] = useState(false);
 const [photoError, setPhotoError] = useState<string>("");
+// Lightbox (gallery modal)
+const [lightboxOpen, setLightboxOpen] = useState(false);
+const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
+const [lightboxIndex, setLightboxIndex] = useState(0);
+
+function openLightbox(photos: string[], index: number) {
+  setLightboxPhotos(photos ?? []);
+  setLightboxIndex(index);
+  setLightboxOpen(true);
+}
+
+function closeLightbox() {
+  setLightboxOpen(false);
+  setLightboxPhotos([]);
+  setLightboxIndex(0);
+}
+
+// Keyboard controls (Esc closes, arrows navigate)
+useEffect(() => {
+  if (!lightboxOpen) return;
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") setLightboxIndex((i) => Math.max(0, i - 1));
+    if (e.key === "ArrowRight")
+      setLightboxIndex((i) => Math.min(lightboxPhotos.length - 1, i + 1));
+  };
+
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+}, [lightboxOpen, lightboxPhotos.length]);
+
 // Verification
 const [isVerified, setIsVerified] = useState(false);
 
@@ -1935,6 +1967,111 @@ setTimeout(() => setStatus(""), 1200);
       minHeight: 0,
     }}
   >
+    {/* LIGHTBOX MODAL (GLOBAL) */}
+{lightboxOpen && (
+  <div
+    onClick={closeLightbox}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.85)",
+      zIndex: 999999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 16,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "relative",
+        maxWidth: "95vw",
+        maxHeight: "95vh",
+      }}
+    >
+      <img
+        src={lightboxPhotos[lightboxIndex]}
+        alt="Gallery"
+        style={{
+          maxWidth: "100%",
+          maxHeight: "100%",
+          borderRadius: 12,
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
+
+      {/* Close */}
+      <button
+        onClick={closeLightbox}
+        style={{
+          position: "absolute",
+          top: -10,
+          right: -10,
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          border: "none",
+          background: "rgba(0,0,0,0.75)",
+          color: "white",
+          fontSize: 20,
+          fontWeight: 900,
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
+
+      {/* Left */}
+      {lightboxIndex > 0 && (
+        <button
+          onClick={(e) => {
+    e.stopPropagation();
+    setLightboxIndex((i) => i - 1);
+  }}
+          style={{
+            position: "absolute",
+            left: -50,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            color: "white",
+            fontSize: 36,
+            cursor: "pointer",
+          }}
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Right */}
+      {lightboxIndex < lightboxPhotos.length - 1 && (
+        <button
+           onClick={(e) => {
+    e.stopPropagation();
+    setLightboxIndex((i) => i + 1);
+  }}
+          style={{
+            position: "absolute",
+            right: -50,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            color: "white",
+            fontSize: 36,
+            cursor: "pointer",
+          }}
+        >
+          ›
+        </button>
+      )}
+    </div>
+  </div>
+)}
+
       {/* MAP */}
       <div
       onClick={() => {
@@ -2423,7 +2560,7 @@ title={`Tier ${cleanTier}`}
 
   {pPhotos.length > 0 ? (
     <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 10 }}>
-      {pPhotos.slice(0, 8).map((url) => (
+      {pPhotos.slice(0, 8).map((url, i) => (
   <div
     key={url}
     style={{
@@ -2436,24 +2573,32 @@ title={`Tier ${cleanTier}`}
       background: "rgba(255,255,255,0.04)",
     }}
   >
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      title="Open full size"
-      style={{ display: "block", width: "100%", height: "100%" }}
-    >
-      <img
-        src={url}
-        alt="profile photo"
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          display: "block",
-        }}
-      />
-    </a>
+    <button
+  type="button"
+  onClick={() => openLightbox(pPhotos, i)}
+  title="View"
+  style={{
+    display: "block",
+    width: "100%",
+    height: "100%",
+    padding: 0,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+  }}
+>
+  <img
+    src={url}
+    alt="profile photo"
+    style={{
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      display: "block",
+    }}
+  />
+</button>
+
 
     <button
       type="button"
@@ -2885,34 +3030,35 @@ title={`Tier ${cleanTier}`}
     <div style={{ fontSize: 12, opacity: 0.65 }}>Loading photos…</div>
   ) : publicPhotos.length > 0 ? (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-      {publicPhotos.slice(0, 8).map((url) => (
-        <a
-          key={url}
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          title="Open full size"
-          style={{
-            display: "block",
-            width: 86,
-            height: 86,
-            borderRadius: 12,
-            overflow: "hidden",
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(255,255,255,0.04)",
-          }}
-        >
-          <img
-            src={url}
-            alt="profile photo"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        </a>
+      {publicPhotos.slice(0, 8).map((url, i) => (
+        <button
+  key={url}
+  type="button"
+  onClick={() => openLightbox(publicPhotos, i)}
+  title="View"
+  style={{
+    width: 86,
+    height: 86,
+    borderRadius: 12,
+    overflow: "hidden",
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.04)",
+    padding: 0,
+    cursor: "pointer",
+  }}
+>
+  <img
+    src={url}
+    alt="profile photo"
+    style={{
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      display: "block",
+    }}
+  />
+</button>
+
       ))}
     </div>
   ) : (
