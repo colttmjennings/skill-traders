@@ -92,10 +92,9 @@ useEffect(() => {
 
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="capacitor-safe-top" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* TOP BAR */}
       <header
-      className="capacitor-safe-top"
         style={{
           minHeight: 56,
           display: "flex",
