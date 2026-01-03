@@ -85,6 +85,7 @@ const hydrateSeq = useRef(0);
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* TOP BAR (this is what you keep losing) */}
       <header
+      className="capacitor-safe-top"
         style={{
           height: 56,
           display: "flex",

@@ -45,3 +45,14 @@ select option {
   background: #0b1220;
   color: rgba(255, 255, 255, 0.92);
 }
+/* Capacitor safe-area: prevent header from sitting too high under status bar */
+.capacitor-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Android fallback (some emulators return 0 for env safe-area) */
+@supports not (padding-top: env(safe-area-inset-top)) {
+  .capacitor-safe-top {
+    padding-top: 16px;
+  }
+}
