@@ -47,7 +47,7 @@ select option {
 }
 /* Capacitor safe-area: push UI below Android status bar / iOS notch */
 .capacitor-safe-top {
-  padding-top: max(env(safe-area-inset-top, 0px), 36px);
+  padding-top: max(env(safe-area-inset-top, 0px), 28px);
 }
 
 /* Android fallback (some emulators return 0 for env safe-area) */
