@@ -1,7 +1,7 @@
 "use client";
 
 import Map from "@/components/Map";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 
@@ -15,97 +15,74 @@ export default function MapPage({
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
   const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
+  const hydrateSeq = useRef(0);
 
+useEffect(() => {
+  let mounted = true;
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+  const hydrate = async (session: any | null) => {
+    const seq = ++hydrateSeq.current;
 
-      setSessionEmail(data.session?.user?.email ?? null);
-      const userId = data.session?.user?.id ?? null;
+    const email = session?.user?.email ?? null;
+    const userId = session?.user?.id ?? null;
 
-if (userId) {
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("username, avatar_url")
-    .eq("id", userId)
-    .single();
+    if (!mounted) return;
 
-  const u = prof?.username ? `@${prof.username}` : null;
+    setSessionEmail(email);
 
-  setSessionLabel((prev) => {
-    // If we successfully got a username, always use it
-    if (u) return u;
+    if (!userId) {
+      setSessionLabel(null);
+      setSessionAvatarUrl(null);
+      return;
+    }
 
-    // If we already had a username displayed, never downgrade to email
-    if (prev && prev.startsWith("@")) return prev;
+    // show loading immediately
+    setSessionLabel("@loading");
+    setSessionAvatarUrl(null);
 
-    // Otherwise, fallback to email (only if we truly never had username yet)
-    return prev && prev.startsWith("@") ? prev : "@loading";
+    // fail-safe: never allow @loading to stick forever
+    const stuckTimer = window.setTimeout(() => {
+      if (!mounted) return;
+      if (seq !== hydrateSeq.current) return;
+      setSessionLabel((prev) => (prev === "@loading" ? "@unknown" : prev));
+    }, 2500);
 
+    try {
+      const { data: prof, error } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!mounted || seq !== hydrateSeq.current) return;
+
+      const u = prof?.username ? `@${prof.username}` : null;
+      setSessionLabel(u ?? "@unknown");
+      setSessionAvatarUrl(prof?.avatar_url ?? null);
+
+      if (error) console.warn("[MapPage] profile load error:", error.message);
+    } catch (e: any) {
+      if (!mounted || seq !== hydrateSeq.current) return;
+      console.warn("[MapPage] profile load crash:", e?.message ?? e);
+      setSessionLabel("@unknown");
+      setSessionAvatarUrl(null);
+    } finally {
+      window.clearTimeout(stuckTimer);
+    }
+  };
+
+  supabase.auth.getSession().then(({ data }) => hydrate(data.session ?? null));
+
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    hydrate(session ?? null);
   });
 
-  setSessionAvatarUrl(prof?.avatar_url ?? null);
-} else {
-  setSessionLabel((prev) => {
-    // If we already had a username displayed, never downgrade to email
-    if (prev && prev.startsWith("@")) return prev;
+  return () => {
+    mounted = false;
+    authListener.subscription.unsubscribe();
+  };
+}, []);
 
-    return prev && prev.startsWith("@") ? prev : "@loading";
-
-  });
-
-  setSessionAvatarUrl(null);
-}
-      
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-
-      setSessionEmail(session?.user?.email ?? null);
-      const userId = session?.user?.id ?? null;
-
-if (userId) {
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("username, avatar_url")
-    .eq("id", userId)
-    .single();
-
-  const u = prof?.username ? `@${prof.username}` : null;
-  setSessionLabel((prev) => {
-  // If we successfully got a username, always use it
-  if (u) return u;
-
-  // If we already had a username displayed, never downgrade to email
-  if (prev && prev.startsWith("@")) return prev;
-
-  // Otherwise, fallback to email (only if we truly never had username yet)
-  return prev && prev.startsWith("@") ? prev : "@loading";
-
-});
-
-  setSessionAvatarUrl(prof?.avatar_url ?? null);
-
-} else {
-  setSessionLabel((prev) => {
-    // If we already had a username displayed, never downgrade to email
-    if (prev && prev.startsWith("@")) return prev;
-
-    return prev && prev.startsWith("@") ? prev : "@loading";
-
-  });
-
-  setSessionAvatarUrl(null);
-}
-
-
-
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
 
   async function logout() {
   await supabase.auth.signOut();
