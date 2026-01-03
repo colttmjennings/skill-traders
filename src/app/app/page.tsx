@@ -62,6 +62,7 @@ export default function AppLanding() {
               lineHeight: 1.05,
               fontWeight: 950,
               letterSpacing: -0.8,
+              color: "#19c6c3",
             }}
           >
             Skill Traders
@@ -70,10 +71,11 @@ export default function AppLanding() {
           <p
             style={{
               margin: 0,
-              opacity: 0.9,
+              opacity: 0.85,
               fontSize: 15,
               lineHeight: 1.5,
               maxWidth: 360,
+              fontWeight: 500,
             }}
           >
             Trade skills locally —{" "}
