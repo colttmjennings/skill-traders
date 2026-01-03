@@ -48,19 +48,6 @@ export default function Page() {
     >
       Skill Traders
     </div>
-
-    <div
-      style={{
-        fontSize: 12,
-        fontWeight: 800,
-        letterSpacing: 0.6,
-        textTransform: "uppercase",
-        opacity: 0.65,
-        marginLeft: 2,
-      }}
-    >
-      Beta
-    </div>
   </div>
 
   {/* Right side */}
