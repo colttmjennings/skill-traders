@@ -131,7 +131,7 @@ useEffect(() => {
       lineHeight: 1,
     }}
   >
-    Skill Traders
+    Skill Traders Test 1
   </div>
 </div>
 
