@@ -227,6 +227,13 @@ const [activeThreadTradeId, setActiveThreadTradeId] = useState<string | null>(nu
 // --- AUTH (MVP) ---
 const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+// top bar label + avatar (never store email in label)
+const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
+
+// used to ignore stale async profile loads
+const hydrateSeq = useRef(0);
+
 
 // Right panel mode 
 const [panelView, setPanelView] = useState<"main" | "profile" | "publicProfile">("main");
@@ -948,67 +955,96 @@ useEffect(() => {
 }, [isMobile]);
 
 
-/// 0) Auth session: restore + listen for changes (single source of truth)
+/// 0) Auth session: restore + listen for changes (fail-safe, never stuck)
 useEffect(() => {
-  let alive = true;
+  let mounted = true;
 
-  const syncSession = async (session: any | null) => {
+  // sequence number to ignore stale async responses
+  const seqRef = hydrateSeq; // uses your existing useRef(0)
+
+  const hydrate = async (session: any | null) => {
+    const seq = ++seqRef.current;
+
     const uid = session?.user?.id ?? null;
 
-    if (!alive) return;
+    if (!mounted) return;
 
-    setSessionEmail(null); // ✅ never keep email in Map.tsx state
-setSessionUserId(uid);
+    // keep behavior you already have: don't store email, store user id
+    setSessionEmail(null);
+    setSessionUserId(uid);
 
-if (uid) {
-  // close auth UI
-  // ✅ do NOT setAuthEmail from session (prevents email bleeding into username UI)
-  setAuthOpen(false);
-  setAuthSent(false);
-
-      // ✅ Pull latest data as soon as session exists (rehydrate-safe)
-      try { await loadMyProfile(); } catch {}
-      try { await loadTrades(); } catch {}
-      try { await loadInbox(); } catch {}
-    } else {
+    if (!uid) {
       // signed out / no session
+      setSessionLabel(null);
+      setSessionAvatarUrl(null);
       setInbox([]);
+      return;
     }
+
+    // close auth UI (your existing behavior)
+    setAuthOpen(false);
+    setAuthSent(false);
+
+    // immediately show loading label
+    setSessionLabel("@loading");
+    setSessionAvatarUrl(null);
+
+    // hard fail-safe: if profile fetch hangs, don't stay @loading forever
+    const stuckTimer = window.setTimeout(() => {
+      if (!mounted) return;
+      if (seq !== seqRef.current) return;
+      setSessionLabel((prev) => (prev === "@loading" ? "@unknown" : prev));
+    }, 2500);
+
+    try {
+      // load profile label + avatar
+      const { data: prof, error } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (!mounted || seq !== seqRef.current) return;
+
+      const u = prof?.username ? `@${prof.username}` : null;
+      setSessionLabel(u ?? "@unknown");
+      setSessionAvatarUrl(prof?.avatar_url ?? null);
+
+      if (error) console.warn("[AUTH] profile load error:", error.message);
+    } catch (e: any) {
+      if (!mounted || seq !== seqRef.current) return;
+      console.warn("[AUTH] profile load crash:", e?.message ?? e);
+      setSessionLabel("@unknown");
+      setSessionAvatarUrl(null);
+    } finally {
+      window.clearTimeout(stuckTimer);
+    }
+
+    // keep your existing “rehydrate-safe” pulls
+    try { await loadMyProfile(); } catch {}
+    try { await loadTrades(); } catch {}
+    try { await loadInbox(); } catch {}
   };
 
-  supabase.auth.getSession().then(({ data }) => {
-  const s = data.session ?? null;
-  console.log("[AUTH:getSession]", {
-    uid: s?.user?.id ?? null,
-    email: s?.user?.email ?? null,
-    exp: (s as any)?.expires_at ?? null,
-  });
-  syncSession(s);
-});
+  // initial session
+  supabase.auth.getSession().then(({ data }) => hydrate(data.session ?? null));
 
-
+  // listen for changes
   const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-  const uid = session?.user?.id ?? null;
-  const email = session?.user?.email ?? null;
-  const exp = (session as any)?.expires_at ?? null;
-
-  console.log("[AUTH]", event, { uid, email, exp });
-
-  if (event === "SIGNED_OUT") {
-    syncSession(null);
-    return;
-  }
-
-  syncSession(session ?? null);
-});
-
+    if (event === "SIGNED_OUT") {
+      hydrate(null);
+      return;
+    }
+    hydrate(session ?? null);
+  });
 
   return () => {
-    alive = false;
+    mounted = false;
     sub.subscription.unsubscribe();
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
+
 
 
   // 1) Init map once
