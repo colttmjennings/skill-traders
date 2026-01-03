@@ -220,12 +220,13 @@ Just{" "}
                 Examples of real trades
               </div>
               <div style={{ fontSize: 16, opacity: 0.92, lineHeight: 1.75 }}>
-                • Yard work ↔ website help
-                <br />
-                • Babysitting ↔ car detailing
-                <br />
-                • Excel help ↔ resume review
-              </div>
+  • Yard work ↔ website help
+  <br />
+  • Tattoo ↔ Plumbing
+  <br />
+  • Painting ↔ Knitted Beanie
+</div>
+
             </div>
 
             <div
