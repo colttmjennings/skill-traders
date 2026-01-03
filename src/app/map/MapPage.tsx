@@ -97,7 +97,7 @@ useEffect(() => {
       <header
       className="capacitor-safe-top"
         style={{
-          height: 56,
+          minHeight: 56,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
