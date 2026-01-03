@@ -101,7 +101,7 @@ useEffect(() => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 16px",
+          padding: "12px 16px 0 16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
           fontFamily: "system-ui",
           fontWeight: 900,
@@ -131,7 +131,7 @@ useEffect(() => {
       lineHeight: 1,
     }}
   >
-    Skill Traders Test 1
+    Skill Traders
   </div>
 </div>
 
