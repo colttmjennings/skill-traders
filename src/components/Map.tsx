@@ -1301,7 +1301,6 @@ async function loadThread(tradeId: string, forUserId?: string | null) {
 
   setThreadLoading(true);
   try {
-
     const { data, error } = await supabase
       .from("messages")
      .select("id, created_at, trade_id, from_user_id, to_user_id, from_email, body, read_at")
@@ -3949,6 +3948,51 @@ await loadTrades();
             <div style={{ fontSize: 12, opacity: 0.7 }}>No matches.</div>
           )}
                 </div>
+                        {/* Privacy / Delete account links */}
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <a
+              href="/privacy"
+              style={{
+                fontSize: 12,
+                opacity: 0.75,
+                fontWeight: 800,
+                textDecoration: "underline",
+              }}
+            >
+              Privacy
+            </a>
+
+            <a
+              href="/delete-account"
+              style={{
+                fontSize: 12,
+                opacity: 0.75,
+                fontWeight: 800,
+                textDecoration: "underline",
+              }}
+            >
+              Delete account
+            </a>
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              opacity: 0.55,
+              lineHeight: 1.35,
+            }}
+          >
+            Manage your account and view policies.
+          </div>
+        </div>
 
     </>
 )}
