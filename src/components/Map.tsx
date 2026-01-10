@@ -848,9 +848,10 @@ async function sendThreadReply() {
 
     setReplyBody("");
 await loadThread(activeThreadTradeId);
-await loadInbox();
+await loadInbox(me);
 await updateReviewGate(activeThreadTradeId);
 await loadCompletedTrade(activeThreadTradeId);
+
 
   } finally {
     setReplySending(false);
@@ -899,7 +900,7 @@ async function submitReview() {
     setActiveThreadTradeId(null);
 
     // Refresh inbox list
-    await loadInbox();
+    await loadInbox(sessionUserId);
   } finally {
     setReviewSending(false);
   }
@@ -1023,7 +1024,7 @@ useEffect(() => {
     // keep your existing “rehydrate-safe” pulls
     try { await loadMyProfile(); } catch {}
     try { await loadTrades(); } catch {}
-    try { await loadInbox(); } catch {}
+     try { await loadInbox(uid); } catch {}
   };
 
   // initial session
@@ -1103,7 +1104,7 @@ useEffect(() => {
         console.log("✅ REALTIME INSERT RECEIVED:", payload);
 
         // refresh inbox list
-        await loadInbox();
+        await loadInbox(sessionUserId);
 
         // if thread is open for this trade, refresh it too
         const tradeId = (payload.new as any)?.trade_id as string | undefined;
@@ -1142,28 +1143,20 @@ async function fetchUsernamesForIds(ids: string[]) {
 }
 
 // 2.5) Load inbox (one row per thread)
-async function loadInbox() {
-  if (!sessionUserId) {
-  setInbox([]);
-  setInboxError("");
-  setInboxLoading(false);
-  return;
-}
+async function loadInbox(forUserId?: string | null) {
+  const me = forUserId ?? sessionUserId;
 
-
+  if (!me) {
+    setInbox([]);
+    setInboxError("");
+    setInboxLoading(false);
+    return;
+  }
 
   setInboxLoading(true);
   setInboxError("");
 
   try {
-    const me = sessionUserId;
-if (!me) {
-  setInbox([]);
-  setInboxLoading(false);
-  return;
-}
-
-
     // Get messages that involve me (sent OR received)
     // Get hidden trade ids for ME only
 const { data: hiddenRows, error: hiddenErr } = await supabase
@@ -3140,7 +3133,7 @@ title={`Tier ${cleanTier}`}
           setAuthSent(false);
           return;
         }
-        loadInbox();
+        loadInbox(sessionUserId);
       }}
       style={{
         padding: "8px 10px",
