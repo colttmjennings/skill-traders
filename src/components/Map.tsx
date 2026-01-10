@@ -415,24 +415,26 @@ useEffect(() => {
 // Verification
 const [isVerified, setIsVerified] = useState(false);
 
-async function loadMyProfile() {
-  if (!sessionUserId) return;
+async function loadMyProfile(forUserId?: string | null) {
+  const uid = forUserId ?? sessionUserId;
+  if (!uid) return;
 
   setProfileLoading(true);
   setProfileError("");
+
   try {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, username, first_name, last_name, birthdate, avatar_url, skills, bio, is_verified")
-      .eq("id", sessionUserId)
+      .eq("id", uid)
       .single();
 
     if (error) {
       setProfileError(error.message);
       return;
     }
-    setIsVerified(!!(data as any)?.is_verified);
 
+    setIsVerified(!!(data as any)?.is_verified);
 
     const row = data as unknown as ProfileRow;
 
@@ -443,11 +445,12 @@ async function loadMyProfile() {
     setPBio(row.bio ?? "");
     setPAvatarUrl(row.avatar_url ?? null);
     setPSkillsText((row.skills ?? []).join(", "));
-        // Load my profile photos from storage
+
+    // ✅ ALSO replace sessionUserId usage below with uid
     try {
       const { data: files, error: fErr } = await supabase.storage
         .from("profile_photos")
-        .list(`${sessionUserId}`, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
+        .list(`${uid}`, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
 
       if (fErr) {
         console.warn("profile_photos list failed:", fErr.message);
@@ -459,7 +462,7 @@ async function loadMyProfile() {
             .map((f) =>
               supabase.storage
                 .from("profile_photos")
-                .getPublicUrl(`${sessionUserId}/${f.name}`).data.publicUrl
+                .getPublicUrl(`${uid}/${f.name}`).data.publicUrl
             );
 
         setPPhotos(urls);
@@ -469,26 +472,23 @@ async function loadMyProfile() {
       setPPhotos([]);
     }
 
-    // Load MY skill rating tiers (for my profile view)
-try {
-  const { data: myRatings, error: myRErr } = await supabase
-    .from("skill_rating_summary")
-    .select("skill_key, avg_rating, review_count, tier")
-    .eq("user_id", sessionUserId)
-    .order("avg_rating", { ascending: false });
+    try {
+      const { data: myRatings, error: myRErr } = await supabase
+        .from("skill_rating_summary")
+        .select("skill_key, avg_rating, review_count, tier")
+        .eq("user_id", uid)
+        .order("avg_rating", { ascending: false });
 
-  if (myRErr) {
-    console.warn("my skill_rating_summary load failed:", myRErr.message);
-  }
-
-  setMySkillRatings((myRatings ?? []) as any);
-} catch {
-  setMySkillRatings([]);
-}
+      if (myRErr) console.warn("my skill_rating_summary load failed:", myRErr.message);
+      setMySkillRatings((myRatings ?? []) as any);
+    } catch {
+      setMySkillRatings([]);
+    }
   } finally {
     setProfileLoading(false);
   }
 }
+
 async function loadPublicProfile(userId: string) {
   setPublicProfile(null);
   setPublicSkills([]);
@@ -847,7 +847,7 @@ async function sendThreadReply() {
     }
 
     setReplyBody("");
-await loadThread(activeThreadTradeId);
+await loadThread(activeThreadTradeId, sessionUserId);
 await loadInbox(me);
 await updateReviewGate(activeThreadTradeId);
 await loadCompletedTrade(activeThreadTradeId);
@@ -1022,7 +1022,7 @@ useEffect(() => {
     }
 
     // keep your existing “rehydrate-safe” pulls
-    try { await loadMyProfile(); } catch {}
+    try { await loadMyProfile(uid); } catch {}
     try { await loadTrades(); } catch {}
      try { await loadInbox(uid); } catch {}
   };
@@ -1109,7 +1109,7 @@ useEffect(() => {
         // if thread is open for this trade, refresh it too
         const tradeId = (payload.new as any)?.trade_id as string | undefined;
         if (inboxOpen && tradeId && activeThreadTradeId === tradeId) {
-          await loadThread(tradeId);
+          await loadThread(tradeId, sessionUserId);
         }
       }
     )
@@ -1295,12 +1295,12 @@ if (inboxUserIds.length) {
   
 
 // 2.6) Load one thread (conversation) for a trade
-async function loadThread(tradeId: string) {
-    if (!sessionUserId) return;
+async function loadThread(tradeId: string, forUserId?: string | null) {
+  const me = forUserId ?? sessionUserId;
+  if (!me) return;
 
   setThreadLoading(true);
   try {
-    const me = sessionUserId;
 
     const { data, error } = await supabase
       .from("messages")
