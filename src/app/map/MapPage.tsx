@@ -1,8 +1,8 @@
 "use client";
 
 import Map from "@/components/Map";
-import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
 
 
 export default function MapPage({
@@ -15,90 +15,52 @@ export default function MapPage({
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
   const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
-  const hydrateSeq = useRef(0);
 
 useEffect(() => {
-  let mounted = true;
+  const handler = (e: any) => {
+    const d = e?.detail ?? null;
 
-  const hydrate = async (session: any | null) => {
-    const seq = ++hydrateSeq.current;
-
-    const email = session?.user?.email ?? null;
-    const userId = session?.user?.id ?? null;
-
-    if (!mounted) return;
-
-    setSessionEmail(email);
-
-    if (!userId) {
-      setSessionLabel(null);
-      setSessionAvatarUrl(null);
-      return;
-    }
-
-    // show loading immediately
-    setSessionLabel("@loading");
-    setSessionAvatarUrl(null);
-
-    // fail-safe: never allow @loading to stick forever
-    const stuckTimer = window.setTimeout(() => {
-      if (!mounted) return;
-      if (seq !== hydrateSeq.current) return;
-      setSessionLabel((prev) => (prev === "@loading" ? "@unknown" : prev));
-    }, 2500);
-
-    try {
-      const { data: prof, error } = await supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (!mounted || seq !== hydrateSeq.current) return;
-
-      const u = prof?.username ? `@${prof.username}` : null;
-      setSessionLabel(u ?? "@unknown");
-      setSessionAvatarUrl(prof?.avatar_url ?? null);
-
-      if (error) console.warn("[MapPage] profile load error:", error.message);
-    } catch (e: any) {
-      if (!mounted || seq !== hydrateSeq.current) return;
-      console.warn("[MapPage] profile load crash:", e?.message ?? e);
-      setSessionLabel("@unknown");
-      setSessionAvatarUrl(null);
-    } finally {
-      window.clearTimeout(stuckTimer);
-    }
+    setSessionEmail(d?.userId ? "logged-in" : null); // just used for UI toggle
+    setSessionLabel(d?.label ?? null);
+    setSessionAvatarUrl(d?.avatarUrl ?? null);
   };
 
-  supabase.auth.getSession().then(({ data }) => hydrate(data.session ?? null));
+  window.addEventListener("skilltraders:session", handler as any);
 
-  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-    hydrate(session ?? null);
-  });
+  // ask Map.tsx to send the current snapshot (prevents “missed event”)
+  window.dispatchEvent(new Event("skilltraders:session:request"));
 
-  return () => {
-    mounted = false;
-    authListener.subscription.unsubscribe();
-  };
+  return () => window.removeEventListener("skilltraders:session", handler as any);
 }, []);
 
 
-  async function logout() {
-  // instantly update UI so it feels responsive
+
+ async function logout() {
+  // 1) Update UI immediately
   setSessionEmail(null);
   setSessionLabel(null);
   setSessionAvatarUrl(null);
 
-  // clear client session
-  await supabase.auth.signOut();
+  try {
+    // 2) Sign out from Supabase (client)
+    await supabase.auth.signOut();
 
-  // clear server cookie session (this is the real fix for WEBSITE)
-  await fetch("/auth/signout", { method: "POST", credentials: "include" });
-
-  // hard navigate
-  window.location.assign("/map?loggedout=1");
+    // 3) Clear any leftover Supabase keys (belt + suspenders)
+    try {
+      for (const k of Object.keys(localStorage)) {
+        if (k.startsWith("sb-")) localStorage.removeItem(k);
+      }
+      for (const k of Object.keys(sessionStorage)) {
+        if (k.startsWith("sb-")) sessionStorage.removeItem(k);
+      }
+    } catch {}
+  } finally {
+    // 4) Hard reload to a clean state
+    window.location.replace("/map?loggedout=1&ts=" + Date.now());
+  }
 }
+
+
 
 
   return (
