@@ -17,21 +17,61 @@ export default function MapPage({
   const [sessionAvatarUrl, setSessionAvatarUrl] = useState<string | null>(null);
 
 useEffect(() => {
-  const handler = (e: any) => {
-    const d = e?.detail ?? null;
+  let alive = true;
 
-    setSessionEmail(d?.userId ? "logged-in" : null); // just used for UI toggle
-    setSessionLabel(d?.label ?? null);
-    setSessionAvatarUrl(d?.avatarUrl ?? null);
+  const hydrate = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user ?? null;
+
+      if (!alive) return;
+
+      if (!user) {
+        setSessionEmail(null);
+        setSessionLabel(null);
+        setSessionAvatarUrl(null);
+        return;
+      }
+
+      // Only used as UI toggle in your header
+      setSessionEmail("logged-in");
+
+      // Pull profile info (adjust column names if yours differ)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!alive) return;
+
+      const label =
+        profile?.username ? `@${profile.username}` : (user.email ?? "Signed in");
+
+      setSessionLabel(label);
+      setSessionAvatarUrl(profile?.avatar_url ?? null);
+    } catch (e) {
+      // If anything fails, just fall back to logged-out UI
+      setSessionEmail(null);
+      setSessionLabel(null);
+      setSessionAvatarUrl(null);
+    }
   };
 
-  window.addEventListener("skilltraders:session", handler as any);
+  // Initial load
+  hydrate();
 
-  // ask Map.tsx to send the current snapshot (prevents “missed event”)
-  window.dispatchEvent(new Event("skilltraders:session:request"));
+  // Keep it updated if auth changes
+  const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    hydrate();
+  });
 
-  return () => window.removeEventListener("skilltraders:session", handler as any);
+  return () => {
+    alive = false;
+    sub?.subscription?.unsubscribe();
+  };
 }, []);
+
 
 
 
