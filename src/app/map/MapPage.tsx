@@ -85,9 +85,19 @@ useEffect(() => {
 
 
   async function logout() {
+  // instantly update UI so it feels responsive
+  setSessionEmail(null);
+  setSessionLabel(null);
+  setSessionAvatarUrl(null);
+
+  // clear client session
   await supabase.auth.signOut();
-  // hard refresh so both MapPage + Map.tsx reset cleanly
-  window.location.href = "/map";
+
+  // clear server cookie session (this is the real fix for WEBSITE)
+  await fetch("/auth/signout", { method: "POST", credentials: "include" });
+
+  // hard navigate
+  window.location.assign("/map?loggedout=1");
 }
 
 
