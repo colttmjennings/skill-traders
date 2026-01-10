@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -22,7 +24,11 @@ export async function POST() {
     }
   );
 
-  await supabase.auth.signOut();
+  // IMPORTANT: global scope invalidates refresh tokens too
+  await supabase.auth.signOut({ scope: "global" });
 
-  return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(
+    { ok: true },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
