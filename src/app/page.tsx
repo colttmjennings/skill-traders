@@ -7,6 +7,27 @@ import { supabase } from "@/lib/supabaseClient";
 
 
 export default function Page() {
+    const router = useRouter();
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!alive) return;
+      if (data?.session) router.replace("/map");
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace("/map");
+    });
+
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [router]);
+
   return (
     <div
       style={{
@@ -156,6 +177,37 @@ Just{" "}
   </Link>
 </div>
 
+{/* Google Play Store CTA */}
+<div
+  style={{
+    marginTop: 14,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+  }}
+>
+  <a
+    href="https://play.google.com/store/apps/details?id=com.skilltraders.app"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "14px 20px",
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.16)",
+      background: "linear-gradient(135deg, #22c55e, #22d3c5)",
+      color: "#06101a",
+      fontWeight: 950,
+      fontSize: 16,
+      textDecoration: "none",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+    }}
+  >
+    Get the Android app on Google Play
+  </a>
+</div>
 
 
 
