@@ -1064,6 +1064,31 @@ useEffect(() => {
   attributionControl: false,
 });
 
+// Center on user's current location (if allowed)
+if (typeof window !== "undefined" && "geolocation" in navigator) {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const userLng = pos.coords.longitude;
+      const userLat = pos.coords.latitude;
+
+      map.flyTo({
+        center: [userLng, userLat],
+        zoom: 12,
+        speed: 1.2,
+      });
+    },
+    (err) => {
+      console.log("Geolocation not available / denied:", err?.message);
+      // Keep default center (KC) if denied/unavailable
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 60_000,
+    }
+  );
+}
+
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
